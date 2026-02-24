@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // แก้ไข Import เป็นตัวพิมพ์เล็ก
 
 // รหัสเชื่อมต่อระบบหลังบ้าน
 const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
@@ -20,9 +20,9 @@ export default function HausStockApp() {
 
   const handleLogin = () => {
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
-    const u = user.toUpperCase();
+    const u = user.trim().toUpperCase(); // เพิ่ม .trim() เพื่อตัดช่องว่างที่อาจติดมา
     
-    // ตรวจสอบ Admin และ Staff (รหัสผ่าน 1234 หรือ HAUS2026)
+    // ตรวจสอบ Admin และ Staff
     const isAdmin = u === 'ADMIN888' && pass === 'HAUS2026';
     const isStaff = staffList.includes(u) && pass === '1234';
 
@@ -32,6 +32,13 @@ export default function HausStockApp() {
       setIsLoggedIn(true);
     } else {
       alert('USER หรือ PASSWORD ไม่ถูกต้อง');
+    }
+  };
+
+  // ฟังก์ชันเสริม: กด Enter เพื่อ Login
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
     }
   };
 
@@ -55,6 +62,7 @@ export default function HausStockApp() {
             placeholder="USER" 
             value={user} 
             onChange={(e) => setUser(e.target.value.toUpperCase())} 
+            onKeyDown={handleKeyDown}
             style={{ width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '10px', border: '1px solid #000', fontSize: '18px', textAlign: 'center', boxSizing: 'border-box' }} 
           />
           <input 
@@ -62,6 +70,7 @@ export default function HausStockApp() {
             placeholder="PASSWORD" 
             value={pass} 
             onChange={(e) => setPass(e.target.value)} 
+            onKeyDown={handleKeyDown}
             style={{ width: '100%', padding: '15px', marginBottom: '25px', borderRadius: '10px', border: '1px solid #000', fontSize: '18px', textAlign: 'center', boxSizing: 'border-box' }} 
           />
           <button 
