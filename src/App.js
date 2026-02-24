@@ -1,3 +1,76 @@
+// Source - https://stackoverflow.com/q/73177643
+
+// Posted by ines, modified by community. See post 'Timeline' for change history
+
+// Retrieved 2026-02-25, License - CC BY-SA 4.0
+
+
+
+const [notes, setNotes] = useState([
+  {
+  noteId: nanoid(),
+  text: 'This is my 1st note!',
+  date: '30/07/2022'
+  },
+  {
+    noteId: nanoid(),
+    text: 'This is my 2nd note!',
+    date: '30/07/2022'
+  }
+])
+
+// 1st time the app runs
+useEffect(() => {
+  const savedNotes = JSON.parse(localStorage.getItem('react-notes'))
+  console.log('refresh page call:',savedNotes)
+
+  if(savedNotes) {
+    setNotes(savedNotes)
+  }
+}, [])
+
+//every time a new note is added
+useEffect(() => {
+  localStorage.setItem('react-notes', JSON.stringify(notes));
+  console.log('new note call:', notes)
+}, [notes])
+; Source - https://stackoverflow.com/a/73177691
+
+; Posted by Youssouf Oumar, modified by community. See post 'Timeline' for change history
+
+; Retrieved 2026-02-25, License - CC BY-SA 4.0
+
+
+
+useEffect(() => {
+  localStorage.setItem('react-notes', JSON.stringify(notes));
+  console.log('new note call:', notes)
+}, [notes])
+// Source - https://stackoverflow.com/a/73177691
+
+// Posted by Youssouf Oumar, modified by community. See post 'Timeline' for change history
+
+// Retrieved 2026-02-25, License - CC BY-SA 4.0
+
+
+
+const [notes, setNotes] = useState(
+  !localStorage.getItem("react-notes")
+    ? [
+        {
+          noteId: nanoid(),
+          text: "This is my 1st note!",
+          date: "30/07/2022",
+        },
+        {
+          noteId: nanoid(),
+          text: "This is my 2nd note!",
+          date: "30/07/2022",
+        },
+      ]
+    : JSON.parse(localStorage.getItem("react-notes"))
+);
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Minus, Loader2, Save, Package, Search, AlertCircle, RefreshCw, Send, Camera, BarChart3, History, LayoutGrid, Copy } from 'lucide-react';
 
