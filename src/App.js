@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// เชื่อมต่อระบบหลังบ้าน
+// หัวใจสำคัญ: การเชื่อมต่อระบบหลังบ้าน
 const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
 
 export default function App() {
@@ -76,15 +76,18 @@ export default function App() {
     );
   }
 
-  // --- หน้าจอหลัง LOGIN สำเร็จ ---
+  // --- หน้าแสดงผลหลัง Login สำเร็จ ---
   return (
     <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'sans-serif' }}>
       <h2 style={{ color: 'green' }}>LOGIN สำเร็จ</h2>
-      <p>ยินดีต้อนรับคุณ: <strong>{loggedInUser}</strong></p>
-      <p style={{ fontSize: '12px', color: '#999', marginTop: '20px' }}>Deployment ID: {DEPLOYMENT_ID}</p>
+      <p style={{ fontSize: '18px' }}>ยินดีต้อนรับคุณ: <strong>{loggedInUser}</strong></p>
+      <div style={{ margin: '20px 0', padding: '15px', border: '1px dashed #ccc', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
+        <p>สถานะ: ระบบจำ Session แล้ว (ลอง Refresh หน้าจอได้เลย)</p>
+        <p style={{ fontSize: '12px', color: '#999' }}>Deployment ID: {DEPLOYMENT_ID}</p>
+      </div>
       <button 
         onClick={handleLogout} 
-        style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '5px' }}
+        style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '5px', fontSize: '16px' }}
       >
         LOGOUT (ออกจากระบบ)
       </button>
