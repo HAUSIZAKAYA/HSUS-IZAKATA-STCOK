@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'; // แก้ไข Import เป็นตัวพิมพ์เล็ก
+import React, { useState, useEffect } from 'react';
 
-// รหัสเชื่อมต่อระบบหลังบ้าน
+// --- หัวใจสำคัญ: การเชื่อมต่อระบบหลังบ้าน
 const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
 
 export default function HausStockApp() {
@@ -9,7 +9,7 @@ export default function HausStockApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState('');
 
-  // 1. ระบบจำการล็อกอิน (Session Persistence)
+  // 1. ระบบจำการล็อกอิน: กันหน้าจอเด้งเวลา Refresh (Session Persistence)
   useEffect(() => {
     const savedUser = localStorage.getItem('haus_user_session');
     if (savedUser) {
@@ -19,10 +19,11 @@ export default function HausStockApp() {
   }, []);
 
   const handleLogin = () => {
+    // รายชื่อพนักงาน
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
-    const u = user.trim().toUpperCase(); // เพิ่ม .trim() เพื่อตัดช่องว่างที่อาจติดมา
+    const u = user.trim().toUpperCase();
     
-    // ตรวจสอบ Admin และ Staff
+    // ตรวจสอบ Admin (รหัสเฉพาะ) และ Staff (1234)
     const isAdmin = u === 'ADMIN888' && pass === 'HAUS2026';
     const isStaff = staffList.includes(u) && pass === '1234';
 
@@ -32,13 +33,6 @@ export default function HausStockApp() {
       setIsLoggedIn(true);
     } else {
       alert('USER หรือ PASSWORD ไม่ถูกต้อง');
-    }
-  };
-
-  // ฟังก์ชันเสริม: กด Enter เพื่อ Login
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleLogin();
     }
   };
 
@@ -62,7 +56,6 @@ export default function HausStockApp() {
             placeholder="USER" 
             value={user} 
             onChange={(e) => setUser(e.target.value.toUpperCase())} 
-            onKeyDown={handleKeyDown}
             style={{ width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '10px', border: '1px solid #000', fontSize: '18px', textAlign: 'center', boxSizing: 'border-box' }} 
           />
           <input 
@@ -70,7 +63,6 @@ export default function HausStockApp() {
             placeholder="PASSWORD" 
             value={pass} 
             onChange={(e) => setPass(e.target.value)} 
-            onKeyDown={handleKeyDown}
             style={{ width: '100%', padding: '15px', marginBottom: '25px', borderRadius: '10px', border: '1px solid #000', fontSize: '18px', textAlign: 'center', boxSizing: 'border-box' }} 
           />
           <button 
@@ -86,15 +78,16 @@ export default function HausStockApp() {
     );
   }
 
-  // --- ส่วนหน้าจอเมื่อเข้าสู่ระบบสำเร็จ ---
+  // --- ส่วนหน้าจอเมื่อเข้าสู่ระบบสำเร็จ (Dashboard) ---
   return (
     <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'sans-serif' }}>
       <h2 style={{ color: 'green' }}>LOGIN สำเร็จ</h2>
       <p style={{ fontSize: '18px' }}>ยินดีต้อนรับคุณ: <strong>{loggedInUser}</strong></p>
-      <div style={{ marginTop: '20px', fontSize: '12px', color: '#999' }}>ID: {DEPLOYMENT_ID}</div>
+      <div style={{ marginTop: '20px', fontSize: '12px', color: '#999' }}>Deployment ID: {DEPLOYMENT_ID}</div>
+      
       <button 
         onClick={handleLogout} 
-        style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '5px' }}
+        style={{ padding: '12px 24px', marginTop: '30px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px' }}
       >
         LOGOUT
       </button>
