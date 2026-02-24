@@ -1,3 +1,5 @@
+// วางลิงก์ที่กูเกิลหาไม่เจอนั่นแหละครับ ใส่ไว้ตรงนี้เลย มันถูกต้องแล้ว!
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g/exec";
 import React, { useState, useEffect } from 'react';
 
 // --- รหัสเชื่อมต่อเดิมของพี่ ตรวจสอบแล้วว่าถูกต้อง ---
