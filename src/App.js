@@ -1,37 +1,28 @@
-import React, { useState, useEffect } from 'react';
+const handleLogout = () => {
+    localStorage.removeItem('haus_user_session');
+    setIsLoggedIn(false);
+    setUser('');
+    setPass('');
+    setItems([]);
+  };
 
-// --- หัวใจสำคัญ: การเชื่อมต่อระบบหลังบ้าน
-const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
-
-export default function HausStockApp() {
-  // 1. State สำหรับระบบ Login
-  const [user, setUser] = useState('');
-  const [pass, setPass] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState('');
-
-  // 2. State สำหรับระบบสต็อก
-  const [items, setItems] = useState([]); // เก็บรายการสินค้า
-  const [loading, setLoading] = useState(false); // สถานะการโหลดข้อมูล
-  const [searchTerm, setSearchTerm] = useState(''); // เก็บคำค้นหา
-  const [updatingId, setUpdatingId] = useState(null); // เช็คว่าบรรทัดไหนกำลังอัปเดต
-
-  // ตรวจสอบ Session เมื่อเปิดแอป
-  useEffect(() => {
-    const savedUser = localStorage.getItem('haus_user_session');
-    if (savedUser) {
-      setLoggedInUser(savedUser);
-      setIsLoggedIn(true);
-    }
-  }, []);
-
-  // 3. ฟังก์ชันดึงข้อมูลสต็อก (Fetch Data)
+  // ==========================================
+  // 3. FETCH & AUTO-SAVE SYSTEM (ระบบดึงข้อมูลและบันทึกอัตโนมัติ)
+  // ==========================================
   const fetchStock = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`https://script.google.com/macros/s/${DEPLOYMENT_ID}/exec?action=getStocks`);
+      const resp = await fetch(`${API_URL}?action=getStocks`);
       const data = await resp.json();
-      setItems(data);
+      // สมมติว่า API ส่งข้อมูลมาเป็น Array ของ Object
+      // ถ้า API ยังไม่มีฟิลด์ boxQty, pieceQty, category ระบบจะสร้างค่าเริ่มต้นให้
+      const formattedData = data.map(item => ({
+        ...item,
+        boxQty: item.boxQty || 0,
+        pieceQty: item.pieceQty || 0,
+        category: item.category || (item.name.includes('เหล้า') || item.name.includes('เบียร์') ? 'บาร์น้ำ' : 'ครัว')
+      }));
+      setItems(formattedData);
     } catch (err) {
       console.error("Fetch Error:", err);
     } finally {
@@ -39,112 +30,496 @@ export default function HausStockApp() {
     }
   };
 
-  // เรียกข้อมูลเมื่อ Login สำเร็จ
   useEffect(() => {
     if (isLoggedIn) fetchStock();
   }, [isLoggedIn]);
 
-  // 4. ฟังก์ชันจัดการการ Login
-  const handleLogin = () => {
-    const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
-    const u = user.trim().toUpperCase();
-    const isAdmin = u === 'ADMIN888' && pass === 'HAUS2026';
-    const isStaff = staffList.includes(u) && pass === '1234';
+  // ฟังก์ชัน Auto-Save เมื่อกดบวก/ลบ
+  const updateQty = async (id, type, operation) => {
+    setItems(prevItems => {
+      const newItems = [...prevItems];
+      const itemIndex = newItems.findIndex(i => i.id === id);
+      if (itemIndex === -1) return prevItems;
 
-    if (isAdmin || isStaff) {
-      localStorage.setItem('haus_user_session', u);
-      setLoggedInUser(u);
-      setIsLoggedIn(true);
-    } else {
-      alert('USER หรือ PASSWORD ไม่ถูกต้อง');
-    }
+      const item = newItems[itemIndex];
+      let newValue = type === 'box' ? item.boxQty : item.pieceQty;
+
+      if (operation === 'add') newValue += 1;
+      if (operation === 'sub' && newValue > 0) newValue -= 1;
+
+      if (type === 'box') item.boxQty = newValue;
+      if (type === 'piece') item.pieceQty = newValue;
+
+      // เรียก Auto-Save ไปยัง Google Sheets
+      triggerAutoSave(id, item.boxQty, item.pieceQty);
+
+      return newItems;
+    });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('haus_user_session');
-    setIsLoggedIn(false);
-    setUser('');
-    setPass('');
-  };
-
-  // 5. ฟังก์ชันอัปเดตสต็อก (Update Stock)
-  const updateQty = async (id, newQty) => {
-    if (newQty < 0) return;
-    setUpdatingId(id);
+  const triggerAutoSave = async (id, boxQty, pieceQty) => {
+    setSavingId(id);
     try {
-      await fetch(`https://script.google.com/macros/s/${DEPLOYMENT_ID}/exec`, {
+      await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'update', id, qty: newQty })
+        body: JSON.stringify({ 
+          action: 'update', 
+          id: id, 
+          boxQty: boxQty, 
+          pieceQty: pieceQty,
+          updatedBy: loggedInUser 
+        })
       });
-      // อัปเดตข้อมูลใน UI ทันที
-      setItems(prev => prev.map(item => item.id === id ? { ...item, qty: newQty } : item));
     } catch (err) {
-      alert("อัปเดตไม่สำเร็จ กรุณาลองใหม่");
+      console.error("Auto-Save Error:", err);
     } finally {
-      setUpdatingId(null);
+      setTimeout(() => setSavingId(null), 1000); // แสดงสถานะ "บันทึกแล้ว" 1 วินาที
     }
   };
 
-  // กรองข้อมูลตาม Search Term
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // --- UI: หน้า LOGIN ---
+  // ==========================================
+  // 4. UI: LOGIN SCREEN (หน้าล็อกอิน)
+  // ==========================================
   if (!isLoggedIn) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', fontFamily: 'sans-serif' }}>
-        <h1 style={{ letterSpacing: '2px' }}>HAUS IZAKAYA</h1>
-        <div style={{ maxWidth: '300px', margin: '0 auto' }}>
-          <input placeholder="USER" value={user} onChange={(e) => setUser(e.target.value)} style={inputStyle} />
-          <input type="password" placeholder="PASSWORD" value={pass} onChange={(e) => setPass(e.target.value)} style={inputStyle} />
+      <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&display=swap');`}</style>
+        
+        <h1 style={{ fontFamily: '"Noto Serif JP", serif', fontSize: '32px', letterSpacing: '2px', marginBottom: '40px', color: '#111' }}>
+          HAUS IZAKAYA
+        </h1>
+        
+        <div style={{ maxWidth: '320px', margin: '0 auto', width: '100%' }}>
+          <input 
+            placeholder="USER" 
+            value={user} 
+            // บังคับพิมพ์ใหญ่เสมอ
+            onChange={(e) => setUser(e.target.value.toUpperCase())} 
+            style={inputStyle} 
+          />
+          <input 
+            type="password" 
+            placeholder="PASSWORD" 
+            value={pass} 
+            onChange={(e) => setPass(e.target.value)} 
+            style={inputStyle} 
+          />
           <button onClick={handleLogin} style={buttonStyle}>LOGIN</button>
         </div>
+        
+        {/* เครดิตผู้สร้าง */}
+        <footer style={{ marginTop: 'auto', paddingTop: '50px', color: '#aaa', letterSpacing: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+          CREATED BY KUNAKORN
+        </footer>
       </div>
     );
   }
 
-  // --- UI: หน้า Dashboard จัดการสต็อก ---
+  // ==========================================
+  // 5. UI: DASHBOARD SCREEN (หน้าจัดการสต๊อก)
+  // ==========================================
+  const filteredItems = items.filter(item => 
+    item.category === activeTab && 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0 }}>สต็อกสินค้า 🍶</h2>
-        <button onClick={handleLogout} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>Logout ({loggedInUser})</button>
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f4f7f6', minHeight: '100vh' }}>
+      
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '20px', color: '#111' }}>HAUS STOCK</h2>
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>พนักงาน: <strong>{loggedInUser}</strong></div>
+        </div>
+        <button onClick={handleLogout} style={{ color: '#fff', backgroundColor: '#e53935', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
+          LOGOUT
+        </button>
       </div>
 
+      {/* Tabs (ครัว / บาร์น้ำ) */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+        <button onClick={() => setActiveTab('ครัว')} style={activeTab === 'ครัว' ? activeTabStyle : inactiveTabStyle}>🍳 สต๊อกครัว</button>
+        <button onClick={() => setActiveTab('บาร์น้ำ')} style={activeTab === 'บาร์น้ำ' ? activeTabStyle : inactiveTabStyle}>🍹 สต๊อกบาร์น้ำ</button>
+      </div>
+
+      {/* Search & Refresh */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <input 
-          placeholder="🔍 ค้นหาสินค้า..." 
+          placeholder={`🔍 ค้นหาสินค้าใน${activeTab}...`} 
           value={searchTerm} 
           onChange={(e) => setSearchTerm(e.target.value)} 
-          style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '16px', outline: 'none' }}
         />
-        <button onClick={fetchStock} style={{ padding: '10px', cursor: 'pointer' }}>🔄</button>
+        <button onClick={fetchStock} style={{ padding: '0 15px', cursor: 'pointer', borderRadius: '8px', border: 'none', backgroundColor: '#111', color: '#fff', fontSize: '18px' }}>
+          🔄
+        </button>
       </div>
 
+      {/* Item List */}
       {loading ? (
-        <p style={{ textAlign: 'center' }}>กำลังโหลดข้อมูล...</p>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#666' }}>กำลังโหลดข้อมูล 209 รายการ... ⏳</div>
       ) : (
-        <div style={{ background: '#f9f9f9', borderRadius: '10px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredItems.map(item => (
-            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid #eee' }}>
-              <div>
-                <div style={{ fontWeight: 'bold' }}>{item.name}</div>
-                <div style={{ fontSize: '12px', color: '#666' }}>คงเหลือ: <span style={{ color: item.qty < 5 ? 'red' : 'green', fontWeight: 'bold' }}>{item.qty}</span> {item.unit}</div>
+            <div key={item.id} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
+              
+              {/* ชื่อสินค้า และ สถานะ Auto-Save */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#222' }}>{item.name}</div>
+                {savingId === item.id && <span style={{ fontSize: '12px', color: '#4caf50', fontWeight: 'bold' }}>✓ บันทึกแล้ว</span>}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button onClick={() => updateQty(item.id, item.qty - 1)} disabled={updatingId === item.id} style={qtyBtn}>-</button>
-                <button onClick={() => updateQty(item.id, item.qty + 1)} disabled={updatingId === item.id} style={qtyBtn}>+</button>
+
+              {/* Stepper ลัง และ เศษ */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                
+                {/* กล่องจัดการ "ลัง" */}
+                <div style={stepperContainer}>
+                  <div style={stepperLabel}>📦 ลัง (Box)</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button onClick={() => updateQty(item.id, 'box', 'sub')} style={qtyBtn}>-</button>
+                    <span style={qtyNumber}>{item.boxQty}</span>
+                    <button onClick={() => updateQty(item.id, 'box', 'add')} style={qtyBtn}>+</button>
+                  </div>
+                </div>
+
+                {/* กล่องจัดการ "เศษ" */}
+                <div style={stepperContainer}>
+                  <div style={stepperLabel}>🍾 เศษ (Piece)</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button onClick={() => updateQty(item.id, 'piece', 'sub')} style={qtyBtn}>-</button>
+                    <span style={qtyNumber}>{item.pieceQty}</span>
+                    <button onClick={() => updateQty(item.id, 'piece', 'add')} style={qtyBtn}>+</button>
+                  </div>
+                </div>
+
               </div>
             </div>
           ))}
+          
+          {filteredItems.length === 0 && (
+             <div style={{ textAlign: 'center', color: '#999', padding: '30px' }}>ไม่พบรายการสินค้าในหมวดหมู่นี้</div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// สไตล์เสริม
-const inputStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' };
-const buttonStyle = { width: '100%', padding: '12px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
-const qtyBtn = { width: '35px', height: '35px', borderRadius: '50%', border: '1px solid #ccc', cursor: 'pointer', backgroundColor: '#fff' };
+// ==========================================
+// 6. STYLES (การตกแต่ง UI)
+// ==========================================
+const inputStyle = { 
+  width: '100%', 
+  padding: '16px', 
+  marginBottom: '15px', 
+  borderRadius: '10px', 
+  border: '1px solid #ccc', 
+  boxSizing: 'border-box', 
+  fontSize: '16px', 
+  textAlign: 'center',
+  outline: 'none',
+  backgroundColor: '#fafafa',
+  transition: 'border 0.3s'
+};
+
+const buttonStyle = { 
+  width: '100%', 
+  padding: '16px', 
+  backgroundColor: '#111', 
+  color: '#fff', 
+  border: 'none', 
+  borderRadius: '10px', 
+  cursor: 'pointer', 
+  fontWeight: 'bold', 
+  fontSize: '16px',
+  letterSpacing: '1px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+};
+
+const activeTabStyle = {
+  flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#111', color: '#fff', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer'
+};
+
+const inactiveTabStyle = {
+  flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer'
+};
+
+const stepperContainer = {
+  flex: 1, backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #eee'
+};
+
+const stepperLabel = {
+  fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: 'bold'
+};
+
+const qtyBtn = { 
+  width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', backgroundColor: '#fff', fontSize: '18px', fontWeight: 'bold', color: '#333', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+};
+
+const qtyNumber = {
+  fontSize: '18px', fontWeight: 'bold', width: '24px', textAlign: 'center', color: '#111'
+};
+```const handleLogout = () => {
+    localStorage.removeItem('haus_user_session');
+    setIsLoggedIn(false);
+    setUser('');
+    setPass('');
+    setItems([]);
+  };
+
+  // ==========================================
+  // 3. FETCH & AUTO-SAVE SYSTEM (ระบบดึงข้อมูลและบันทึกอัตโนมัติ)
+  // ==========================================
+  const fetchStock = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch(`${API_URL}?action=getStocks`);
+      const data = await resp.json();
+      // สมมติว่า API ส่งข้อมูลมาเป็น Array ของ Object
+      // ถ้า API ยังไม่มีฟิลด์ boxQty, pieceQty, category ระบบจะสร้างค่าเริ่มต้นให้
+      const formattedData = data.map(item => ({
+        ...item,
+        boxQty: item.boxQty || 0,
+        pieceQty: item.pieceQty || 0,
+        category: item.category || (item.name.includes('เหล้า') || item.name.includes('เบียร์') ? 'บาร์น้ำ' : 'ครัว')
+      }));
+      setItems(formattedData);
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) fetchStock();
+  }, [isLoggedIn]);
+
+  // ฟังก์ชัน Auto-Save เมื่อกดบวก/ลบ
+  const updateQty = async (id, type, operation) => {
+    setItems(prevItems => {
+      const newItems = [...prevItems];
+      const itemIndex = newItems.findIndex(i => i.id === id);
+      if (itemIndex === -1) return prevItems;
+
+      const item = newItems[itemIndex];
+      let newValue = type === 'box' ? item.boxQty : item.pieceQty;
+
+      if (operation === 'add') newValue += 1;
+      if (operation === 'sub' && newValue > 0) newValue -= 1;
+
+      if (type === 'box') item.boxQty = newValue;
+      if (type === 'piece') item.pieceQty = newValue;
+
+      // เรียก Auto-Save ไปยัง Google Sheets
+      triggerAutoSave(id, item.boxQty, item.pieceQty);
+
+      return newItems;
+    });
+  };
+
+  const triggerAutoSave = async (id, boxQty, pieceQty) => {
+    setSavingId(id);
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          action: 'update', 
+          id: id, 
+          boxQty: boxQty, 
+          pieceQty: pieceQty,
+          updatedBy: loggedInUser 
+        })
+      });
+    } catch (err) {
+      console.error("Auto-Save Error:", err);
+    } finally {
+      setTimeout(() => setSavingId(null), 1000); // แสดงสถานะ "บันทึกแล้ว" 1 วินาที
+    }
+  };
+
+  // ==========================================
+  // 4. UI: LOGIN SCREEN (หน้าล็อกอิน)
+  // ==========================================
+  if (!isLoggedIn) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&display=swap');`}</style>
+        
+        <h1 style={{ fontFamily: '"Noto Serif JP", serif', fontSize: '32px', letterSpacing: '2px', marginBottom: '40px', color: '#111' }}>
+          HAUS IZAKAYA
+        </h1>
+        
+        <div style={{ maxWidth: '320px', margin: '0 auto', width: '100%' }}>
+          <input 
+            placeholder="USER" 
+            value={user} 
+            // บังคับพิมพ์ใหญ่เสมอ
+            onChange={(e) => setUser(e.target.value.toUpperCase())} 
+            style={inputStyle} 
+          />
+          <input 
+            type="password" 
+            placeholder="PASSWORD" 
+            value={pass} 
+            onChange={(e) => setPass(e.target.value)} 
+            style={inputStyle} 
+          />
+          <button onClick={handleLogin} style={buttonStyle}>LOGIN</button>
+        </div>
+        
+        {/* เครดิตผู้สร้าง */}
+        <footer style={{ marginTop: 'auto', paddingTop: '50px', color: '#aaa', letterSpacing: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+          CREATED BY KUNAKORN
+        </footer>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // 5. UI: DASHBOARD SCREEN (หน้าจัดการสต๊อก)
+  // ==========================================
+  const filteredItems = items.filter(item => 
+    item.category === activeTab && 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f4f7f6', minHeight: '100vh' }}>
+      
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '20px', color: '#111' }}>HAUS STOCK</h2>
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>พนักงาน: <strong>{loggedInUser}</strong></div>
+        </div>
+        <button onClick={handleLogout} style={{ color: '#fff', backgroundColor: '#e53935', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
+          LOGOUT
+        </button>
+      </div>
+
+      {/* Tabs (ครัว / บาร์น้ำ) */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+        <button onClick={() => setActiveTab('ครัว')} style={activeTab === 'ครัว' ? activeTabStyle : inactiveTabStyle}>🍳 สต๊อกครัว</button>
+        <button onClick={() => setActiveTab('บาร์น้ำ')} style={activeTab === 'บาร์น้ำ' ? activeTabStyle : inactiveTabStyle}>🍹 สต๊อกบาร์น้ำ</button>
+      </div>
+
+      {/* Search & Refresh */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <input 
+          placeholder={`🔍 ค้นหาสินค้าใน${activeTab}...`} 
+          value={searchTerm} 
+          onChange={(e) => setSearchTerm(e.target.value)} 
+          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '16px', outline: 'none' }}
+        />
+        <button onClick={fetchStock} style={{ padding: '0 15px', cursor: 'pointer', borderRadius: '8px', border: 'none', backgroundColor: '#111', color: '#fff', fontSize: '18px' }}>
+          🔄
+        </button>
+      </div>
+
+      {/* Item List */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#666' }}>กำลังโหลดข้อมูล 209 รายการ... ⏳</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filteredItems.map(item => (
+            <div key={item.id} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
+              
+              {/* ชื่อสินค้า และ สถานะ Auto-Save */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#222' }}>{item.name}</div>
+                {savingId === item.id && <span style={{ fontSize: '12px', color: '#4caf50', fontWeight: 'bold' }}>✓ บันทึกแล้ว</span>}
+              </div>
+
+              {/* Stepper ลัง และ เศษ */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                
+                {/* กล่องจัดการ "ลัง" */}
+                <div style={stepperContainer}>
+                  <div style={stepperLabel}>📦 ลัง (Box)</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button onClick={() => updateQty(item.id, 'box', 'sub')} style={qtyBtn}>-</button>
+                    <span style={qtyNumber}>{item.boxQty}</span>
+                    <button onClick={() => updateQty(item.id, 'box', 'add')} style={qtyBtn}>+</button>
+                  </div>
+                </div>
+
+                {/* กล่องจัดการ "เศษ" */}
+                <div style={stepperContainer}>
+                  <div style={stepperLabel}>🍾 เศษ (Piece)</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button onClick={() => updateQty(item.id, 'piece', 'sub')} style={qtyBtn}>-</button>
+                    <span style={qtyNumber}>{item.pieceQty}</span>
+                    <button onClick={() => updateQty(item.id, 'piece', 'add')} style={qtyBtn}>+</button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          ))}
+          
+          {filteredItems.length === 0 && (
+             <div style={{ textAlign: 'center', color: '#999', padding: '30px' }}>ไม่พบรายการสินค้าในหมวดหมู่นี้</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// 6. STYLES (การตกแต่ง UI)
+// ==========================================
+const inputStyle = { 
+  width: '100%', 
+  padding: '16px', 
+  marginBottom: '15px', 
+  borderRadius: '10px', 
+  border: '1px solid #ccc', 
+  boxSizing: 'border-box', 
+  fontSize: '16px', 
+  textAlign: 'center',
+  outline: 'none',
+  backgroundColor: '#fafafa',
+  transition: 'border 0.3s'
+};
+
+const buttonStyle = { 
+  width: '100%', 
+  padding: '16px', 
+  backgroundColor: '#111', 
+  color: '#fff', 
+  border: 'none', 
+  borderRadius: '10px', 
+  cursor: 'pointer', 
+  fontWeight: 'bold', 
+  fontSize: '16px',
+  letterSpacing: '1px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+};
+
+const activeTabStyle = {
+  flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#111', color: '#fff', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer'
+};
+
+const inactiveTabStyle = {
+  flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer'
+};
+
+const stepperContainer = {
+  flex: 1, backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #eee'
+};
+
+const stepperLabel = {
+  fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: 'bold'
+};
+
+const qtyBtn = { 
+  width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', backgroundColor: '#fff', fontSize: '18px', fontWeight: 'bold', color: '#333', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+};
+
+const qtyNumber = {
+  fontSize: '18px', fontWeight: 'bold', width: '24px', textAlign: 'center', color: '#111'
+};
+```
