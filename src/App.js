@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const DEPLOYMENT_ID = "AKfvcbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
+const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
 
 export default function HausStockApp() {
   const [user, setUser] = useState('');
@@ -20,7 +20,7 @@ export default function HausStockApp() {
   const handleLogin = () => {
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
     const u = user.toUpperCase();
-    const p = pass.toUpperCase(); // ตามที่เพื่อนใส่มาในโค้ดล่าสุด
+    const p = pass.toUpperCase();
 
     const isAdmin = u === 'ADMIN888' && p === 'HAUS2026';
     const isStaff = staffList.includes(u) && p === '1234';
@@ -41,7 +41,6 @@ export default function HausStockApp() {
     setPass('');
   };
 
-  // --- หน้าจอ LOGIN ---
   if (!isLoggedIn) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'sans-serif' }}>
@@ -76,14 +75,13 @@ export default function HausStockApp() {
     );
   }
 
-  // --- หน้าจอหลัง LOGIN สำเร็จ ---
   return (
     <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'sans-serif' }}>
       <h2 style={{ color: 'green' }}>LOGIN สำเร็จ</h2>
       <p style={{ fontSize: '18px' }}>คุณ: <strong>{loggedInUser}</strong></p>
       
       <div style={{ margin: '20px auto', padding: '15px', maxWidth: '400px', border: '1px dashed #ccc', borderRadius: '10px', backgroundColor: '#f9f9f9', fontSize: '14px' }}>
-        <p>สถานะ: ระบบจำ Session แล้ว (ลอง Refresh หน้าจอได้เลย)</p>
+        <p>สถานะ: ระบบจำ Session แล้ว</p>
         <p style={{ color: '#999', fontSize: '12px' }}>ID: {DEPLOYMENT_ID}</p>
       </div>
 
