@@ -1,26 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Minus, Loader2, Save, Package, Search, AlertCircle } from 'lucide-react';
+impor React, { useState, useEffect } fro'react';
+impor{ Plus, Minus, Loader2, Save, Package, Search, AlertCircle } fro'lucide-react';
 
 // URL ของคุณที่ได้จาก Google Apps Script
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g/exec";
+constSCRIPT_URL = "https://script.google.com/macros/s/AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g/exec";
 
-function App() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [category, setCategory] = useState('All');
+functionApp() {
+  cons[items, setItems] = useState([]);
+  cons[loading, setLoading] = useState(true);
+  cons[isSaving, setIsSaving] = useState(false);
+  cons[searchTerm, setSearchTerm] = useState('');
+  cons[category, setCategory] = useState('All');
 
   // 1. ดึงข้อมูลจาก Cloud (GET)
-  const fetchItems = async () => {
-    try {
+  constfetchItems = asyncl() => {
+    tr{
       setLoading(true);
-      const response = await fetch(SCRIPT_URL);
-      const data = await response.json();
+      constresponse = awaitfetch(SCRIPT_URL);
+      constdata = awaitresponse.json();
       setItems(data);
-    } catch (error) {
+    } catc(error) {
       console.error("Fetch Error:", error);
-    } finally {
+    } finall{
       setLoading(false);
     }
   };
@@ -30,52 +30,52 @@ function App() {
   }, []);
 
   // 2. ฟังก์ชันอัปเดตจำนวนและ Auto-save (POST)
-  const updateQty = async (id, type, delta) => {
-    if (isSaving) return; // ป้องกันการกดซ้ำขณะกำลัง Sync
+  cons updateQty = asyn(id, type, delta) => {
+    i(isSaving) retur; // ป้องกันการกดซ้ำขณะกำลัง Sync
 
     // อัปเดต State ใน React ทันทีเพื่อให้ User รู้สึกว่าแอปเร็ว
-    const updatedItems = items.map(item => {
-      if (item.id === id) {
-        const newBoxQty = type === 'box' ? Math.max(0, item.boxQty + delta) : item.boxQty;
-        const newPieceQty = type === 'piece' ? Math.max(0, item.pieceQty + delta) : item.pieceQty;
-        return { ...item, boxQty: newBoxQty, pieceQty: newPieceQty };
+    constupdatedItems = items.map(item => {
+      (item.id === id) {
+        cons newBoxQty = type === 'box' ? Math.max(0, item.boxQty + delta) : item.boxQty;
+        consnewPieceQty = type === 'piece' ? Math.max(0, item.pieceQty + delta) : item.pieceQty;
+        retur{ ...item, boxQty: newBoxQty, pieceQty: newPieceQty };
       }
-      return item;
+      returnitem;
     });
     setItems(updatedItems);
 
     // ค้นหาข้อมูลตัวที่จะส่งไปเซฟ
-    const targetItem = updatedItems.find(i => i.id === id);
-    await syncToGoogleSheets(targetItem);
+    consttargetItem = updatedItems.find(i => i.id === id);
+    awaitsyncToGoogleSheets(targetItem);
   };
 
-  const syncToGoogleSheets = async (itemData) => {
+  cons syncToGoogleSheets = asyn (itemData) => {
     setIsSaving(true);
-    try {
-      await fetch(SCRIPT_URL, {
+    tr{
+      awaifetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors', // สำคัญมากสำหรับ Google Script
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(itemData)
       });
-    } catch (error) {
+    } catc(error) {
       console.error("Sync Error:", error);
-    } finally {
+    } finall{
       // หน่วงเวลาเล็กน้อยให้สถานะโชว์ที่หน้าจอ
       setTimeout(() => setIsSaving(false), 800);
     }
   };
 
   // 3. ระบบ Filter และ Search
-  const categories = ['All', ...new Set(items.map(i => i.category))];
-  const filteredItems = items.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = category === 'All' || item.category === category;
-    return matchesSearch && matchesCategory;
+  constcategories = ['All', ...Set(items.map(i => i.category))];
+  constilteredItems = items.filter(item => {
+    contmatchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    constmatchesCategory = category === 'All' || item.category === category;
+    returnmatchesSearch && matchesCategory;
   });
 
-  if (loading) {
-    return (
+  i(loading) {
+    retu(
       <div className="h-screen flex flex-col items-center justify-center bg-zinc-900 text-white">
         <Loader2 className="animate-spin text-orange-500 mb-4" size={48} />
         <p className="tracking-widest font-bold">HAUS STOCK LOADING...</p>
@@ -83,7 +83,7 @@ function App() {
     );
   }
 
-  return (
+  retu(
     <div className="max-w-md mx-auto bg-zinc-50 min-h-screen pb-10 shadow-2xl">
       {/* Header Section */}
       <header className="bg-zinc-950 text-white p-6 sticky top-0 z-20 border-b-2 border-orange-500">
@@ -173,4 +173,4 @@ function App() {
   );
 }
 
-export default App;
+exportdefaul App;
