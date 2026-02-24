@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Minus, Loader2, Save, Package, Search } from 'lucide-react';
+import { Plus, Minus, Loader2, Save, Package, Search, AlertCircle } from 'lucide-react';
 
 // URL ของคุณที่ส่งมาให้
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g/exec";
@@ -10,16 +10,21 @@ function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('All');
+  const [error, setError] = useState(null);
 
   // --- 1. การดึงข้อมูล (Fetch Data) ---
   const fetchItems = async () => {
     try {
+      setLoading(true);
       const response = await fetch(SCRIPT_URL);
+      if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setItems(data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Fetch Error:", error);
+      setError(null);
+    } catch (err) {
+      setError("ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+      console.error("Fetch Error:", err);
+    } finally {
       setLoading(false);
     }
   };
@@ -28,11 +33,11 @@ function App() {
     fetchItems();
   }, []);
 
-  // --- 2. การอัปเดตจำนวน (Update & Auto-save) ---
+  // --- 2. การอัปเดตจำนวนและ Auto-save ---
   const updateQty = async (id, type, delta) => {
-    if (isSaving) return;
+    if (isSaving) return; // ป้องกันการกดซ้ำขณะบันทึก
 
-    // อัปเดต UI ทันที (Optimistic Update)
+    // อัปเดต State ในเครื่องทันที (Optimistic Update) เพื่อความลื่นไหล
     const updatedItems = items.map(item => {
       if (item.id === id) {
         const newBoxQty = type === 'box' ? Math.max(0, item.boxQty + delta) : item.boxQty;
@@ -43,32 +48,33 @@ function App() {
     });
     setItems(updatedItems);
 
-    // ส่งข้อมูลไปบันทึกที่ Google Sheets
+    // เตรียมข้อมูลส่งไปที่ Google Sheets
     const targetItem = updatedItems.find(i => i.id === id);
-    await syncToGoogleSheets(targetItem);
+    await saveToGoogleSheets(targetItem);
   };
 
-  const syncToGoogleSheets = async (item) => {
+  const saveToGoogleSheets = async (itemData) => {
     setIsSaving(true);
     try {
-      // ใช้ฟอร์ม Data เพื่อส่งไปยัง doPost ของ Google Script
+      // ส่งข้อมูลด้วย POST method
       await fetch(SCRIPT_URL, {
         method: 'POST',
-        mode: 'no-cors', // สำคัญ: Google Script doPost ไม่รองรับ CORS
+        mode: 'no-cors', // ข้อจำกัดของ Google Apps Script
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
+        body: JSON.stringify(itemData)
       });
-    } catch (error) {
-      console.error("Sync Error:", error);
+      // เนื่องจาก no-cors จะไม่คืนค่า Response ที่เราอ่านได้ 
+      // แต่ข้อมูลจะถูกส่งถึง Google Sheets เรียบร้อย
+    } catch (err) {
+      console.error("Sync Error:", err);
     } finally {
-      // หน่วงเวลาให้ User เห็นสถานะการ Sync เล็กน้อย
-      setTimeout(() => setIsSaving(false), 700);
+      // หน่วงเวลาเล็กน้อยเพื่อให้ User เห็นสถานะการ Sync
+      setTimeout(() => setIsSaving(false), 800);
     }
   };
 
-  // --- 3. การกรองข้อมูล (Filter & Search) ---
+  // --- 3. การกรองและค้นหาข้อมูล ---
   const categories = ['All', ...new Set(items.map(i => i.category))];
-  
   const filteredItems = items.filter(item => {
     const matchesCategory = category === 'All' || item.category === category;
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -78,47 +84,49 @@ function App() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="animate-spin text-orange-500 mx-auto mb-2" size={40} />
-          <p className="text-gray-600 font-medium">กำลังโหลดสต็อก HAUS...</p>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-orange-500" size={40} />
+          <p className="text-gray-500 font-medium">กำลังเตรียมสต็อก HAUS IZAKAYA...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-10 shadow-xl">
-      {/* Header Section */}
-      <header className="bg-[#1a1a1a] text-white p-5 sticky top-0 z-20 border-b-4 border-orange-500">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-black uppercase tracking-tighter">Haus Izakaya Stock</h1>
-          <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${isSaving ? 'bg-orange-500 animate-pulse' : 'bg-green-600'}`}>
+    <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-10 shadow-2xl overflow-hidden">
+      {/* Header & Search */}
+      <header className="bg-zinc-900 text-white p-6 sticky top-0 z-20">
+        <div className="flex justify-between items-center mb-5">
+          <div>
+            <h1 className="text-xl font-black italic tracking-tighter text-orange-500">HAUS IZAKAYA</h1>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-[0.2em]">Stock Management System</p>
+          </div>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${isSaving ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
             {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-            {isSaving ? 'SYNCING' : 'CLOUD SYNCED'}
+            {isSaving ? 'SYNCING...' : 'CLOUD SYNCED'}
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-2.5 text-zinc-500" size={18} />
           <input 
             type="text"
-            placeholder="ค้นหาชื่อสินค้า..."
-            className="w-full bg-gray-800 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+            placeholder="ค้นหาสินค้า..."
+            className="w-full bg-zinc-800 border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </header>
 
-      {/* Category Navigation */}
-      <nav className="flex overflow-x-auto p-3 gap-2 bg-white border-b sticky top-[124px] z-10 shadow-sm">
+      {/* Category Tabs */}
+      <nav className="flex overflow-x-auto p-4 gap-2 bg-white border-b sticky top-[138px] z-10 scrollbar-hide">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-              category === cat ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-500'
+            className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+              category === cat ? 'bg-orange-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400'
             }`}
           >
             {cat.toUpperCase()}
@@ -126,55 +134,82 @@ function App() {
         ))}
       </nav>
 
-      {/* Stock Items List */}
+      {/* List Content */}
       <main className="p-4 space-y-4">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm">
+            <AlertCircle size={18} /> {error}
+          </div>
+        )}
+
         {filteredItems.map(item => (
-          <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 transition-transform active:scale-[0.98]">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{item.category}</span>
-                <h3 className="font-bold text-gray-800 text-lg leading-tight">{item.name}</h3>
+          <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-4">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">{item.category}</span>
+                <h3 className="font-bold text-zinc-800 text-lg leading-tight">{item.name}</h3>
               </div>
-              <div className="bg-gray-50 px-3 py-1 rounded-lg text-right border border-gray-100">
-                <p className="text-[10px] text-gray-400 font-bold uppercase">Total Pieces</p>
-                <p className="text-lg font-black text-gray-800">
+              <div className="text-right">
+                <p className="text-[9px] text-gray-400 font-bold uppercase">Total Pieces</p>
+                <p className="text-xl font-black text-zinc-800">
                   {(item.boxQty * (item.perBox || 0)) + item.pieceQty}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* Box Stepper */}
-              <div className="bg-gray-50 p-2 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-bold text-gray-400 mb-2 ml-1 uppercase">Boxes (ลัง)</p>
+              {/* Stepper Box */}
+              <div className="bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Package size={14} className="text-zinc-400" />
+                  <span className="text-[11px] font-bold text-zinc-500 uppercase">ลัง (Box)</span>
+                </div>
                 <div className="flex items-center justify-between">
-                  <button onClick={() => updateQty(item.id, 'box', -1)} className="p-2 bg-white rounded-lg shadow-sm hover:text-orange-500"><Minus size={18} /></button>
-                  <span className="font-bold text-lg">{item.boxQty}</span>
-                  <button onClick={() => updateQty(item.id, 'box', 1)} className="p-2 bg-white rounded-lg shadow-sm hover:text-orange-500"><Plus size={18} /></button>
+                  <button 
+                    onClick={() => updateQty(item.id, 'box', -1)}
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <span className="font-black text-xl text-zinc-800">{item.boxQty}</span>
+                  <button 
+                    onClick={() => updateQty(item.id, 'box', 1)}
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
+                  >
+                    <Plus size={18} />
+                  </button>
                 </div>
               </div>
 
-              {/* Piece Stepper */}
-              <div className="bg-gray-50 p-2 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-bold text-gray-400 mb-2 ml-1 uppercase">Pieces (ชิ้น)</p>
+              {/* Stepper Piece */}
+              <div className="bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <div className="w-3.5 h-3.5 bg-zinc-400 rounded-sm" />
+                  <span className="text-[11px] font-bold text-zinc-500 uppercase">ชิ้น (Piece)</span>
+                </div>
                 <div className="flex items-center justify-between">
-                  <button onClick={() => updateQty(item.id, 'piece', -1)} className="p-2 bg-white rounded-lg shadow-sm hover:text-orange-500"><Minus size={18} /></button>
-                  <span className="font-bold text-lg">{item.pieceQty}</span>
-                  <button onClick={() => updateQty(item.id, 'piece', 1)} className="p-2 bg-white rounded-lg shadow-sm hover:text-orange-500"><Plus size={18} /></button>
+                  <button 
+                    onClick={() => updateQty(item.id, 'piece', -1)}
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <span className="font-black text-xl text-zinc-800">{item.pieceQty}</span>
+                  <button 
+                    onClick={() => updateQty(item.id, 'piece', 1)}
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
+                  >
+                    <Plus size={18} />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         ))}
-
-        {filteredItems.length === 0 && (
-          <div className="text-center py-10 text-gray-400">
-            <p>ไม่พบรายการสินค้าที่ค้นหา...</p>
-          </div>
-        )}
       </main>
     </div>
   );
 }
 
 export default App;
+
