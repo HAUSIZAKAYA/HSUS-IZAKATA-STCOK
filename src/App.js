@@ -18,12 +18,13 @@ export default function App() {
 
   const handleLogin = () => {
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
-    const isAdmin = user.toUpperCase() === 'ADMIN888' && pass === 'HAUS2026';
-    const isStaff = staffList.includes(user.toUpperCase()) && pass === '1234';
+    const inputUser = user.toUpperCase();
+    const isAdmin = inputUser === 'ADMIN888' && pass === 'HAUS2026';
+    const isStaff = staffList.includes(inputUser) && pass === '1234';
 
     if (isAdmin || isStaff) {
-      localStorage.setItem('haus_user_session', user.toUpperCase());
-      setLoggedInUser(user.toUpperCase());
+      localStorage.setItem('haus_user_session', inputUser);
+      setLoggedInUser(inputUser);
       setIsLoggedIn(true);
     } else {
       alert('USER หรือ PASSWORD ไม่ถูกต้อง');
@@ -67,7 +68,7 @@ export default function App() {
     <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'sans-serif' }}>
       <h2 style={{ color: 'green' }}>LOGIN สำเร็จ</h2>
       <p>ยินดีต้อนรับคุณ: <strong>{loggedInUser}</strong></p>
-      <p style={{ fontSize: '12px', color: '#999' }}>ID: {DEPLOYMENT_ID}</p>
+      <p style={{ fontSize: '12px', color: '#999' }}>Deployment ID: {DEPLOYMENT_ID}</p>
       <button onClick={handleLogout} style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '5px' }}>LOGOUT</button>
     </div>
   );
