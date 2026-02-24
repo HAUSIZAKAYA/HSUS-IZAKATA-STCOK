@@ -1,141 +1,51 @@
 import React, { useState, useEffect } from 'react';
 
 const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
+const SCRIPT_URL = `https://script.google.com/macros/s/${DEPLOYMENT_ID}/exec`;
 
 export default function HausStockApp() {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState('');
+  
+  // States สำหรับระบบสต็อก
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // ตรวจสอบ Session ทันทีที่เปิดแอป
   useEffect(() => {
     const savedUser = localStorage.getItem('haus_user_session');
     if (savedUser) {
       setLoggedInUser(savedUser);
       setIsLoggedIn(true);
+      fetchStock(); // ดึงข้อมูลทันทีถ้าล็อกอินอยู่แล้ว
     }
   }, []);
 
+  const fetchStock = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(SCRIPT_URL);
+      const data = await response.json();
+      setItems(data);
+    } catch (err) {
+      console.error("โหลดข้อมูลไม่สำเร็จ", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = (e) => {
-    if (e) e.preventDefault(); 
+    e.preventDefault();
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
-    
-    // บังคับตัวใหญ่เพื่อความแม่นยำ
     const u = user.toUpperCase();
     const p = pass.toUpperCase();
-
-    const isAdmin = u === 'ADMIN888' && p === 'HAUS2026';
-    const isStaff = staffList.includes(u) && p === '1234';
-
-    if (isAdmin || isStaff) {
+    if ((u === 'ADMIN888' && p === 'HAUS2026') || (staffList.includes(u) && p === '1234')) {
       localStorage.setItem('haus_user_session', u);
       setLoggedInUser(u);
       setIsLoggedIn(true);
-    } else {
-      alert('USER หรือ PASSWORD ไม่ถูกต้องครับพี่ต้มจืด!');
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('haus_user_session');
-    setIsLoggedIn(false);
-    setUser('');
-    setPass('');
-  };
-
-  // --- หน้าจอ LOGIN ---
-  if (!isLoggedIn) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', fontFamily: 'sans-serif', padding: '20px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ fontSize: '50px', marginBottom: '10px' }}>🏮</div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '2px', color: '#000' }}>HAUS IZAKAYA</h1>
-          <p style={{ margin: 0, fontSize: '10px', color: '#888', letterSpacing: '4px' }}>STOCK MANAGEMENT</p>
-        </div>
-
-        <form onSubmit={handleLogin} style={{ width: '100%', maxWidth: '320px' }}>
-          <input 
-            type="text" 
-            placeholder="USER"
-            value={user}
-            onChange={(e) => setUser(e.target.value.toUpperCase())}
-            style={{ width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '12px', border: '1px solid #eee', fontSize: '16px', textAlign: 'center', boxSizing: 'border-box', backgroundColor: '#f9f9f9', outline: 'none' }}
-            required
-          />
-          <input 
-            type="password" 
-            placeholder="••••••"
-            value={pass}
-            onChange={(e) => setPass(e.target.value.toUpperCase())}
-            style={{ width: '100%', padding: '15px', marginBottom: '25px', borderRadius: '12px', border: '1px solid #eee', fontSize: '16px', textAlign: 'center', boxSizing: 'border-box', backgroundColor: '#f9f9f9', outline: 'none' }}
-            required
-          />
-          <button type="submit" style={{ width: '100%', padding: '16px', borderRadius: '12px', border: 'none', backgroundColor: '#000', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s active' }}>
-            LOGIN
-          </button>
-        </form>
-
-        <p style={{ marginTop: '40px', fontSize: '10px', color: '#ccc', letterSpacing: '2px' }}>BY KUNAKORN</p>
-      </div>
-    );
-  }
-
-  // --- หน้าจอหลัก (Dashboard) ---
-  return (
-    <div style={{ minHeight: '100vh', padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', backgroundColor: '#fdfdfd', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ fontSize: '50px', marginBottom: '15px' }}>✅</div>
-      <h2 style={{ margin: '0 0 10px 0', fontWeight: '900' }}>LOGIN สำเร็จ</h2>
-      <p style={{ color: '#666', margin: 0 }}>ยินดีต้อนรับคุณ: <strong style={{ color: '#000' }}>{loggedInUser}</strong></p>
-      
-      <div style={{ margin: '30px auto', padding: '25px', border: '1px dashed #ddd', borderRadius: '20px', width: '100%', maxWidth: '320px', backgroundColor: '#fff', boxSizing: 'border-box' }}>
-        <p style={{ fontSize: '12px', color: '#00c853', fontWeight: 'bold', margin: '0 0 10px 0' }}>● ระบบจำ Session เรียบร้อย</p>
-        <p style={{ fontSize: '11px', color: '#999', margin: '0 0 15px 0', lineHeight: '1.5' }}>พี่ลอง Refresh หน้าจอได้เลยครับ ข้อมูลไม่หลุดแน่นอน</p>
-        <div style={{ fontSize: '9px', color: '#ccc', wordBreak: 'break-all', backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '8px' }}>
-          ID: {DEPLOYMENT_ID}
-        </div>
-      </div>
-
-      <button 
-        onClick={handleLogout}
-        style={{ marginTop: 'auto', padding: '15px 30px', borderRadius: '12px', border: '1px solid #ff5252', backgroundColor: 'transparent', color: '#ff5252', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}
-      >
-        LOGOUT (ออกจากระบบ)
-      </button>
-    </div>
-  );
-}
-
-import React, { useState, useEffect } from 'react';
-
-const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
-
-export default function HausStockApp() {
-  const [user, setUser] = useState('');
-  const [pass, setPass] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState('');
-
-  // 1. ตรวจสอบ Session เมื่อเปิดแอป
-  useEffect(() => {
-    const savedUser = localStorage.getItem('haus_user_session');
-    if (savedUser) {
-      setLoggedInUser(savedUser);
-      setIsLoggedIn(true);
-    }
-  }, []);
-
-  const handleLogin = (e) => {
-    e.preventDefault(); // กันหน้าจอรีเฟรชเอง
-    const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
-    
-    const isAdmin = user === 'ADMIN888' && pass === 'HAUS2026';
-    const isStaff = staffList.includes(user) && pass === '1234';
-
-    if (isAdmin || isStaff) {
-      localStorage.setItem('haus_user_session', user);
-      setLoggedInUser(user);
-      setIsLoggedIn(true);
+      fetchStock();
     } else {
       alert('USER หรือ PASSWORD ไม่ถูกต้องครับพี่!');
     }
@@ -144,65 +54,109 @@ export default function HausStockApp() {
   const handleLogout = () => {
     localStorage.removeItem('haus_user_session');
     setIsLoggedIn(false);
-    setUser('');
-    setPass('');
+    setUser(''); setPass('');
   };
 
-  // --- 2. หน้าจอ LOGIN (ถ้ายังไม่ล็อกอิน) ---
+  // ฟังก์ชันอัปเดตสต็อก (Auto-save)
+  const updateQty = async (id, type, delta) => {
+    if (isSaving) return;
+    
+    const updatedItems = items.map(item => {
+      if (item.id === id) {
+        const newBox = type === 'box' ? Math.max(0, item.boxQty + delta) : item.boxQty;
+        const newPiece = type === 'piece' ? Math.max(0, item.pieceQty + delta) : item.pieceQty;
+        return { ...item, boxQty: newBox, pieceQty: newPiece };
+      }
+      return item;
+    });
+    setItems(updatedItems);
+
+    // ส่งข้อมูลบันทึกไป Google Sheets
+    setIsSaving(true);
+    const targetItem = updatedItems.find(i => i.id === id);
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(targetItem)
+      });
+    } finally {
+      setTimeout(() => setIsSaving(false), 500);
+    }
+  };
+
   if (!isLoggedIn) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', fontFamily: 'sans-serif', padding: '20px' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', padding: '20px', fontFamily: 'sans-serif' }}>
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ fontSize: '50px', marginBottom: '10px' }}>🏮</div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '2px' }}>HAUS IZAKAYA</h1>
-          <p style={{ margin: 0, fontSize: '10px', color: '#888', letterSpacing: '4px' }}>STOCK MANAGEMENT</p>
+          <div style={{ fontSize: '50px' }}>🏮</div>
+          <h1 style={{ fontWeight: '900' }}>HAUS IZAKAYA</h1>
         </div>
-
         <form onSubmit={handleLogin} style={{ width: '100%', maxWidth: '320px' }}>
-          <input 
-            type="text" 
-            placeholder="USER"
-            value={user}
-            onChange={(e) => setUser(e.target.value.toUpperCase())}
-            style={{ width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '12px', border: '1px solid #eee', fontSize: '16px', textAlign: 'center', boxSizing: 'border-box', backgroundColor: '#f9f9f9' }}
-            required
-          />
-          <input 
-            type="password" 
-            placeholder="••••••"
-            value={pass}
-            onChange={(e) => setPass(e.target.value.toUpperCase())}
-            style={{ width: '100%', padding: '15px', marginBottom: '25px', borderRadius: '12px', border: '1px solid #eee', fontSize: '16px', textAlign: 'center', boxSizing: 'border-box', backgroundColor: '#f9f9f9' }}
-            required
-          />
-          <button type="submit" style={{ width: '100%', padding: '16px', borderRadius: '12px', border: 'none', backgroundColor: '#000', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
-            LOGIN
-          </button>
+          <input placeholder="USER" value={user} onChange={(e) => setUser(e.target.value)} style={inputStyle} required />
+          <input type="password" placeholder="PASSWORD" value={pass} onChange={(e) => setPass(e.target.value)} style={inputStyle} required />
+          <button type="submit" style={btnPrimary}>LOGIN</button>
         </form>
-
-        <p style={{ marginTop: '40px', fontSize: '10px', color: '#ccc', letterSpacing: '2px' }}>BY KUNAKORN</p>
       </div>
     );
   }
 
-  // --- 3. หน้าจอหลัก (หลัง LOGIN สำเร็จ) ---
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', backgroundColor: '#fdfdfd' }}>
-      <div style={{ fontSize: '40px', marginBottom: '10px' }}>✅</div>
-      <h2 style={{ margin: '0 0 10px 0' }}>LOGIN สำเร็จ</h2>
-      <p style={{ color: '#666' }}>ยินดีต้อนรับคุณ: <strong style={{ color: '#000' }}>{loggedInUser}</strong></p>
-      
-      <div style={{ margin: '30px auto', padding: '20px', border: '1px dashed #ccc', borderRadius: '15px', maxWidth: '300px', backgroundColor: '#fff' }}>
-        <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px 0' }}>สถานะ: ระบบจำ Session แล้ว</p>
-        <p style={{ fontSize: '10px', color: '#aaa', wordBreak: 'break-all' }}>Deployment ID: {DEPLOYMENT_ID}</p>
-      </div>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9f9f9', fontFamily: 'sans-serif' }}>
+      {/* Header */}
+      <header style={{ backgroundColor: '#000', color: '#fff', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', sticky: 'top' }}>
+        <span style={{ fontWeight: '900', fontSize: '14px' }}>🏮 HAUS STOCK</span>
+        <button onClick={handleLogout} style={{ color: '#ff4444', background: 'none', border: 'none', fontSize: '12px' }}>LOGOUT</button>
+      </header>
 
-      <button 
-        onClick={handleLogout}
-        style={{ marginTop: '20px', padding: '12px 25px', borderRadius: '10px', border: '1px solid #ff4444', backgroundColor: 'transparent', color: '#ff4444', fontWeight: 'bold', cursor: 'pointer' }}
-      >
-        LOGOUT (ออกจากระบบ)
-      </button>
+      {/* Stock List */}
+      <main style={{ padding: '20px' }}>
+        <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+          <span>พนักงาน: <strong>{loggedInUser}</strong></span>
+          <span style={{ fontSize: '10px', color: isSaving ? 'orange' : 'green' }}>{isSaving ? '● บันทึกข้อมูล...' : '● เชื่อมต่อคลาวด์'}</span>
+        </div>
+
+        {loading ? <p>กำลังโหลดสต็อก...</p> : (
+          <div style={{ display: 'grid', gap: '15px' }}>
+            {items.map(item => (
+              <div key={item.id} style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <strong style={{ fontSize: '18px' }}>{item.name}</strong>
+                  <span style={{ color: '#888', fontSize: '12px' }}>ยอดรวม: { (item.boxQty * (item.perBox || 0)) + item.pieceQty }</span>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  {/* ลัง (Box) */}
+                  <div style={stepperBox}>
+                    <span style={{ fontSize: '10px' }}>ลัง (Box)</span>
+                    <div style={stepperUI}>
+                      <button onClick={() => updateQty(item.id, 'box', -1)} style={stepBtn}>-</button>
+                      <span style={{ fontWeight: 'bold' }}>{item.boxQty}</span>
+                      <button onClick={() => updateQty(item.id, 'box', 1)} style={stepBtn}>+</button>
+                    </div>
+                  </div>
+                  {/* ชิ้น (Piece) */}
+                  <div style={stepperBox}>
+                    <span style={{ fontSize: '10px' }}>ชิ้น (Piece)</span>
+                    <div style={stepperUI}>
+                      <button onClick={() => updateQty(item.id, 'piece', -1)} style={stepBtn}>-</button>
+                      <span style={{ fontWeight: 'bold' }}>{item.pieceQty}</span>
+                      <button onClick={() => updateQty(item.id, 'piece', 1)} style={stepBtn}>+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
+
+// --- Styles ---
+const inputStyle = { width: '100%', padding: '15px', marginBottom: '10px', borderRadius: '12px', border: '1px solid #eee', boxSizing: 'border-box' };
+const btnPrimary = { width: '100%', padding: '15px', borderRadius: '12px', border: 'none', backgroundColor: '#000', color: '#fff', fontWeight: 'bold' };
+const stepperBox = { backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '10px', textAlign: 'center' };
+const stepperUI = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' };
+const stepBtn = { width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', cursor: 'pointer' };
