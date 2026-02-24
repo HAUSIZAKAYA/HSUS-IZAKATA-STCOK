@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// --- หัวใจสำคัญ: การเชื่อมต่อระบบหลังบ้าน ---
+// --- รหัสเชื่อมต่อเดิมของพี่ ตรวจสอบแล้วว่าถูกต้อง ---
 const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
 
 export default function HausStockApp() {
@@ -9,7 +9,7 @@ export default function HausStockApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState('');
 
-  // 1. ระบบจำการล็อกอิน: กันหน้าจอเด้งเวลา Refresh
+  // 1. ตรวจสอบ Session เมื่อเปิดแอป
   useEffect(() => {
     const savedUser = localStorage.getItem('haus_user_session');
     if (savedUser) {
@@ -19,11 +19,9 @@ export default function HausStockApp() {
   }, []);
 
   const handleLogin = (e) => {
-    if (e) e.preventDefault(); // กันการรีเฟรชหน้าจอโดยไม่ตั้งใจ
-    
+    if (e) e.preventDefault(); 
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
     
-    // บังคับตัวใหญ่ในการตรวจสอบเพื่อความแม่นยำ
     const u = user.toUpperCase();
     const p = pass.toUpperCase();
     
@@ -46,7 +44,7 @@ export default function HausStockApp() {
     setPass('');
   };
 
-  // --- 2. หน้าจอ LOGIN ---
+  // --- 2. ส่วนแสดงผลหน้าจอ LOGIN ---
   if (!isLoggedIn) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', fontFamily: 'sans-serif', padding: '20px' }}>
@@ -80,4 +78,32 @@ export default function HausStockApp() {
           </button>
         </form>
 
-        <p style={{ marginTop: '100px', fontSize: '1
+        <p style={{ marginTop: '100px', fontSize: '12px', color: '#bbb', letterSpacing: '4px' }}>KUNAKORN</p>
+      </div>
+    );
+  }
+
+  // --- 3. ส่วนแสดงผลหน้าจอ Dashboard (หลัง Login) ---
+  return (
+    <div style={{ minHeight: '100vh', padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', backgroundColor: '#fdfdfd', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ fontSize: '50px', marginBottom: '15px' }}>✅</div>
+      <h2 style={{ margin: '0 0 10px 0', fontWeight: '900' }}>LOGIN สำเร็จ</h2>
+      <p style={{ color: '#666', margin: 0 }}>ยินดีต้อนรับคุณ: <strong style={{ color: '#000' }}>{loggedInUser}</strong></p>
+      
+      <div style={{ margin: '30px auto', padding: '25px', border: '1px dashed #ddd', borderRadius: '20px', width: '100%', maxWidth: '320px', backgroundColor: '#fff', boxSizing: 'border-box' }}>
+        <p style={{ fontSize: '12px', color: '#00c853', fontWeight: 'bold', margin: '0 0 10px 0' }}>● ระบบจำ Session เรียบร้อย</p>
+        <p style={{ fontSize: '11px', color: '#999', margin: '0 0 15px 0', lineHeight: '1.5' }}>พี่ลอง Refresh หน้าจอได้เลยครับ ข้อมูลไม่หลุดแน่นอน</p>
+        <div style={{ fontSize: '9px', color: '#ccc', wordBreak: 'break-all', backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '8px' }}>
+          Deployment ID: {DEPLOYMENT_ID}
+        </div>
+      </div>
+
+      <button 
+        onClick={handleLogout}
+        style={{ marginTop: 'auto', padding: '15px 30px', borderRadius: '12px', border: '1px solid #ff5252', backgroundColor: 'transparent', color: '#ff5252', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}
+      >
+        LOGOUT (ออกจากระบบ)
+      </button>
+    </div>
+  );
+}
