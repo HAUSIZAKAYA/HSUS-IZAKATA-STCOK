@@ -22,7 +22,7 @@ export default function HausStockApp() {
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
     const u = user.toUpperCase();
     
-    // ตรวจสอบ Admin และ Staff
+    // ตรวจสอบ Admin และ Staff (รหัสผ่าน 1234 หรือ HAUS2026)
     const isAdmin = u === 'ADMIN888' && pass === 'HAUS2026';
     const isStaff = staffList.includes(u) && pass === '1234';
 
@@ -42,7 +42,7 @@ export default function HausStockApp() {
     setPass('');
   };
 
-  // --- หน้าจอ LOGIN ---
+  // --- ส่วนหน้าจอ LOGIN (UI) ---
   if (!isLoggedIn) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'sans-serif' }}>
@@ -77,7 +77,7 @@ export default function HausStockApp() {
     );
   }
 
-  // --- หน้าจอหลัง LOGIN สำเร็จ ---
+  // --- ส่วนหน้าจอเมื่อเข้าสู่ระบบสำเร็จ ---
   return (
     <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'sans-serif' }}>
       <h2 style={{ color: 'green' }}>LOGIN สำเร็จ</h2>
