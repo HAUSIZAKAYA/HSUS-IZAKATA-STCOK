@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// รหัสเชื่อมต่อระบบหลังบ้าน (ตรวจสอบตัวเลขและอักขระแล้ว)
+// รหัสเชื่อมต่อระบบหลังบ้าน
 const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
 
 export default function HausStockApp() {
@@ -9,7 +9,7 @@ export default function HausStockApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState('');
 
-  // 1. ระบบจำการล็อกอิน: ใช้ getItem (ตัว i) ไม่ใช่ getltem (ตัว l)
+  // 1. ระบบจำการล็อกอิน (Session Persistence)
   useEffect(() => {
     const savedUser = localStorage.getItem('haus_user_session');
     if (savedUser) {
@@ -22,7 +22,7 @@ export default function HausStockApp() {
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
     const u = user.toUpperCase();
     
-    // ตรวจสอบรหัสผ่าน (ใช้ === เพื่อความถูกต้องแม่นยำ)
+    // ตรวจสอบ Admin และ Staff
     const isAdmin = u === 'ADMIN888' && pass === 'HAUS2026';
     const isStaff = staffList.includes(u) && pass === '1234';
 
@@ -42,7 +42,7 @@ export default function HausStockApp() {
     setPass('');
   };
 
-  // --- ส่วนการแสดงผล (UI) ---
+  // --- หน้าจอ LOGIN ---
   if (!isLoggedIn) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'sans-serif' }}>
@@ -77,15 +77,17 @@ export default function HausStockApp() {
     );
   }
 
+  // --- หน้าจอหลัง LOGIN สำเร็จ ---
   return (
     <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'sans-serif' }}>
       <h2 style={{ color: 'green' }}>LOGIN สำเร็จ</h2>
       <p style={{ fontSize: '18px' }}>ยินดีต้อนรับคุณ: <strong>{loggedInUser}</strong></p>
+      <div style={{ marginTop: '20px', fontSize: '12px', color: '#999' }}>ID: {DEPLOYMENT_ID}</div>
       <button 
         onClick={handleLogout} 
         style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '5px' }}
       >
-        LOGOUT (ออกจากระบบ)
+        LOGOUT
       </button>
     </div>
   );
