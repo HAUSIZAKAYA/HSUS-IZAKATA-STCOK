@@ -1,3 +1,13 @@
+await fetch(API_URL, {
+  method: 'POST',
+  body: JSON.stringify({ 
+    action: 'update', 
+    id: id, 
+    boxQty: boxQty, 
+    pieceQty: pieceQty,
+    updatedBy: loggedInUser 
+  })
+});
 const handleLogout = () => {
     localStorage.removeItem('haus_user_session');
     setIsLoggedIn(false);
