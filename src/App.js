@@ -1,176 +1,158 @@
-impor React, { useState, useEffect } fro'react';
-impor{ Plus, Minus, Loader2, Save, Package, Search, AlertCircle } fro'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Minus, Loader2, Save, Package, Search, AlertCircle, RefreshCw, Send, Camera, BarChart3, History, LayoutGrid, Copy } from 'lucide-react';
 
-// URL ของคุณที่ได้จาก Google Apps Script
-constSCRIPT_URL = "https://script.google.com/macros/s/AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g/exec";
 
-functionApp() {
-  cons[items, setItems] = useState([]);
-  cons[loading, setLoading] = useState(true);
-  cons[isSaving, setIsSaving] = useState(false);
-  cons[searchTerm, setSearchTerm] = useState('');
-  cons[category, setCategory] = useState('All');
+export default function HausCloudApp() {
+  const [tab, setTab] = useState('stock'); // สลับเป็นหน้านี้ให้พี่ก่อนเลย
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [category, setCategory] = useState('All');
+  const [messages, setMessages] = useState([]); // สำหรับหน้าแชท
 
-  // 1. ดึงข้อมูลจาก Cloud (GET)
-  constfetchItems = asyncl() => {
-    tr{
+  // --- 1. ดึงข้อมูลจาก Cloud (Google Sheets) ---
+  const fetchItems = async () => {
+    try {
       setLoading(true);
-      constresponse = awaitfetch(SCRIPT_URL);
-      constdata = awaitresponse.json();
+      const response = await fetch(SCRIPT_URL);
+      const data = await response.json();
       setItems(data);
-    } catc(error) {
+    } catch (error) {
       console.error("Fetch Error:", error);
-    } finall{
+    } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  useEffect(() => { fetchItems(); }, []);
 
-  // 2. ฟังก์ชันอัปเดตจำนวนและ Auto-save (POST)
-  cons updateQty = asyn(id, type, delta) => {
-    i(isSaving) retur; // ป้องกันการกดซ้ำขณะกำลัง Sync
-
-    // อัปเดต State ใน React ทันทีเพื่อให้ User รู้สึกว่าแอปเร็ว
-    constupdatedItems = items.map(item => {
-      (item.id === id) {
-        cons newBoxQty = type === 'box' ? Math.max(0, item.boxQty + delta) : item.boxQty;
-        consnewPieceQty = type === 'piece' ? Math.max(0, item.pieceQty + delta) : item.pieceQty;
-        retur{ ...item, boxQty: newBoxQty, pieceQty: newPieceQty };
+  // --- 2. อัปเดตจำนวน & ซิงค์กลับ Cloud ---
+  const updateQty = async (id, type, delta) => {
+    if (isSaving) return;
+    const updatedItems = items.map(item => {
+      if (item.id === id) {
+        const newBoxQty = type === 'box' ? Math.max(0, item.boxQty + delta) : item.boxQty;
+        const newPieceQty = type === 'piece' ? Math.max(0, item.pieceQty + delta) : item.pieceQty;
+        return { ...item, boxQty: newBoxQty, pieceQty: newPieceQty };
       }
-      returnitem;
+      return item;
     });
     setItems(updatedItems);
-
-    // ค้นหาข้อมูลตัวที่จะส่งไปเซฟ
-    consttargetItem = updatedItems.find(i => i.id === id);
-    awaitsyncToGoogleSheets(targetItem);
+    const targetItem = updatedItems.find(i => i.id === id);
+    syncToGoogleSheets(targetItem);
   };
 
-  cons syncToGoogleSheets = asyn (itemData) => {
+  const syncToGoogleSheets = async (itemData) => {
     setIsSaving(true);
-    tr{
-      awaifetch(SCRIPT_URL, {
+    try {
+      await fetch(SCRIPT_URL, {
         method: 'POST',
-        mode: 'no-cors', // สำคัญมากสำหรับ Google Script
+        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(itemData)
       });
-    } catc(error) {
-      console.error("Sync Error:", error);
-    } finall{
-      // หน่วงเวลาเล็กน้อยให้สถานะโชว์ที่หน้าจอ
+    } finally {
       setTimeout(() => setIsSaving(false), 800);
     }
   };
 
-  // 3. ระบบ Filter และ Search
-  constcategories = ['All', ...Set(items.map(i => i.category))];
-  constilteredItems = items.filter(item => {
-    contmatchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    constmatchesCategory = category === 'All' || item.category === category;
-    returnmatchesSearch && matchesCategory;
-  });
+  const categories = ['All', ...new Set(items.map(i => i.category))];
+  const filteredItems = items.filter(i => 
+    i.name.toLowerCase().includes(searchTerm.toLowerCase()) && (category === 'All' || i.category === category)
+  );
 
-  i(loading) {
-    retu(
-      <div className="h-screen flex flex-col items-center justify-center bg-zinc-900 text-white">
-        <Loader2 className="animate-spin text-orange-500 mb-4" size={48} />
-        <p className="tracking-widest font-bold">HAUS STOCK LOADING...</p>
+  if (loading) return (
+    <div className="h-screen bg-black flex flex-col items-center justify-center text-amber-500 font-black italic">
+      <Loader2 className="animate-spin mb-4" size={40} /> HAUS CLOUD LOADING...
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-zinc-100 flex flex-col relative overflow-hidden font-sans">
+      {/* 🌌 Dotted Glow Background */}
+      <div className="absolute inset-0 z-0 opacity-20" 
+           style={{ backgroundImage: 'radial-gradient(#fbbf24 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }}>
       </div>
-    );
-  }
 
-  retu(
-    <div className="max-w-md mx-auto bg-zinc-50 min-h-screen pb-10 shadow-2xl">
-      {/* Header Section */}
-      <header className="bg-zinc-950 text-white p-6 sticky top-0 z-20 border-b-2 border-orange-500">
+      <header className="relative z-10 p-5 bg-black/60 border-b border-white/5 backdrop-blur-xl sticky top-0">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-black italic tracking-tighter">HAUS IZAKAYA</h1>
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${isSaving ? 'bg-orange-500/20 text-orange-500 animate-pulse' : 'bg-green-500/20 text-green-500'}`}>
-            {isSaving ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
-            {isSaving ? 'SYNCING...' : 'CLOUD SYNCED'}
+          <div>
+            <h1 className="text-xl font-black italic text-amber-500 tracking-tighter">HAUS IZAKAYA</h1>
+            <div className={`flex items-center gap-1.5 text-[9px] font-bold ${isSaving ? 'text-amber-500' : 'text-green-500'}`}>
+              {isSaving ? <RefreshCw size={10} className="animate-spin" /> : <Save size={10} />}
+              {isSaving ? 'SYNCING TO CLOUD...' : 'CLOUD READY'}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={fetchItems} className="p-2 text-zinc-500"><RefreshCw size={18}/></button>
+            <div className="w-9 h-9 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-bold text-xs">🏮</div>
           </div>
         </div>
-
         <div className="relative">
-          <Search className="absolute left-3 top-2.5 text-zinc-500" size={18} />
-          <input 
-            type="text"
-            placeholder="ค้นหาสินค้า..."
-            className="w-full bg-zinc-800 border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <Search className="absolute left-3 top-2.5 text-zinc-600" size={16} />
+          <input className="w-full bg-zinc-900 border-none rounded-xl py-2 pl-10 text-sm" placeholder="ค้นหาสต็อก..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
       </header>
 
-      {/* Category Navigation */}
-      <nav className="flex overflow-x-auto p-4 gap-2 bg-white border-b sticky top-[124px] z-10">
-        {categories.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-              category === cat ? 'bg-orange-500 text-white' : 'bg-zinc-100 text-zinc-400'
-            }`}
-          >
-            {cat.toUpperCase()}
-          </button>
-        ))}
-      </nav>
+      <main className="relative z-10 flex-1 p-4 overflow-y-auto pb-44">
+        {/* Category Nav */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+          {categories.map(cat => (
+            <button key={cat} onClick={() => setCategory(cat)} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase ${category === cat ? 'bg-amber-500 text-black' : 'bg-zinc-900 text-zinc-500'}`}>{cat}</button>
+          ))}
+        </div>
 
-      {/* Stock Cards */}
-      <main className="p-4 space-y-4">
-        {filteredItems.map(item => (
-          <div key={item.id} className="bg-white rounded-3xl p-5 border border-zinc-100 shadow-sm transition-transform active:scale-[0.98]">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{item.category}</span>
-                <h3 className="font-bold text-zinc-800 text-lg leading-tight">{item.name}</h3>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-zinc-400 font-bold">TOTAL</p>
-                <p className="text-xl font-black text-zinc-900">
-                  { (item.boxQty * (item.perBox || 0)) + item.pieceQty }
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {/* Box Stepper */}
-              <div className="bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
-                <div className="flex items-center gap-1 mb-2 text-zinc-400">
-                  <Package size={14} />
-                  <span className="text-[10px] font-bold uppercase">ลัง (Box)</span>
+        {/* Stock List (Artifact Cards) */}
+        <div className="space-y-4">
+          {filteredItems.map(item => (
+            <div key={item.id} className="bg-zinc-900/80 border border-white/5 p-5 rounded-[2.5rem] shadow-xl backdrop-blur-md">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">{item.category}</span>
+                  <h3 className="font-bold text-zinc-200 text-lg leading-tight">{item.name}</h3>
                 </div>
-                <div className="flex items-center justify-between">
-                  <button onClick={() => updateQty(item.id, 'box', -1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500"><Minus size={16} /></button>
-                  <span className="font-black text-lg">{item.boxQty}</span>
-                  <button onClick={() => updateQty(item.id, 'box', 1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500"><Plus size={16} /></button>
+                <div className="text-right">
+                  <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-tighter">TOTAL</p>
+                  <p className="text-2xl font-black text-white italic">{ (item.boxQty * (item.perBox || 0)) + item.pieceQty }</p>
                 </div>
               </div>
 
-              {/* Piece Stepper */}
-              <div className="bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
-                <div className="flex items-center gap-1 mb-2 text-zinc-400">
-                  <div className="w-3.5 h-3.5 bg-zinc-300 rounded-sm" />
-                  <span className="text-[10px] font-bold uppercase">ชิ้น (Piece)</span>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Box Control */}
+                <div className="bg-black/40 p-3 rounded-2xl border border-white/5">
+                  <p className="text-[9px] text-zinc-500 mb-2 uppercase font-bold">Box (ลัง)</p>
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => updateQty(item.id, 'box', -1)} className="w-9 h-9 flex items-center justify-center bg-zinc-800 rounded-xl active:bg-amber-500"><Minus size={14}/></button>
+                    <span className="font-black text-lg">{item.boxQty}</span>
+                    <button onClick={() => updateQty(item.id, 'box', 1)} className="w-9 h-9 flex items-center justify-center bg-zinc-800 rounded-xl active:bg-amber-500"><Plus size={14}/></button>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <button onClick={() => updateQty(item.id, 'piece', -1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500"><Minus size={16} /></button>
-                  <span className="font-black text-lg">{item.pieceQty}</span>
-                  <button onClick={() => updateQty(item.id, 'piece', 1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500"><Plus size={16} /></button>
+                {/* Piece Control */}
+                <div className="bg-black/40 p-3 rounded-2xl border border-white/5">
+                  <p className="text-[9px] text-zinc-500 mb-2 uppercase font-bold">Piece (ชิ้น)</p>
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => updateQty(item.id, 'piece', -1)} className="w-9 h-9 flex items-center justify-center bg-zinc-800 rounded-xl active:bg-amber-500"><Minus size={14}/></button>
+                    <span className="font-black text-lg">{item.pieceQty}</span>
+                    <button onClick={() => updateQty(item.id, 'piece', 1)} className="w-9 h-9 flex items-center justify-center bg-zinc-800 rounded-xl active:bg-amber-500"><Plus size={14}/></button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </main>
+
+      {/* Tab Switcher */}
+      <footer className="fixed bottom-0 w-full p-6 z-20 bg-gradient-to-t from-black via-black/90 to-transparent">
+        <div className="flex justify-around bg-zinc-900/90 border border-white/5 py-4 px-8 rounded-full backdrop-blur-2xl">
+          <button onClick={() => setTab('chat')} className={tab === 'chat' ? 'text-amber-500' : 'text-zinc-600'}><History size={22}/></button>
+          <button onClick={() => setTab('stock')} className={tab === 'stock' ? 'text-amber-500' : 'text-zinc-600'}><LayoutGrid size={22}/></button>
+          <button className="text-zinc-600"><BarChart3 size={22}/></button>
+        </div>
+      </footer>
     </div>
   );
 }
 
-exportdefaul App;
