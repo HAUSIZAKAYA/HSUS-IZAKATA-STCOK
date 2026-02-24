@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-// หัวใจสำคัญ: เชื่อมต่อหลังบ้าน
+// รหัสเชื่อมต่อระบบหลังบ้าน (ตรวจสอบตัวเลขและอักขระแล้ว)
 const DEPLOYMENT_ID = "AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g";
 
-export default function App() {
+export default function HausStockApp() {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState('');
 
-  // 1. ระบบจำการล็อกอิน (Session Persistence)
+  // 1. ระบบจำการล็อกอิน: ใช้ getItem (ตัว i) ไม่ใช่ getltem (ตัว l)
   useEffect(() => {
     const savedUser = localStorage.getItem('haus_user_session');
     if (savedUser) {
@@ -22,7 +22,7 @@ export default function App() {
     const staffList = ['NAVIN', 'JIDAPA', 'THANATORN', 'BEW', 'STAMP', 'NON', 'SURA', 'DAO', 'DUEN', 'YAN'];
     const u = user.toUpperCase();
     
-    // ตรวจสอบ Admin และ Staff
+    // ตรวจสอบรหัสผ่าน (ใช้ === เพื่อความถูกต้องแม่นยำ)
     const isAdmin = u === 'ADMIN888' && pass === 'HAUS2026';
     const isStaff = staffList.includes(u) && pass === '1234';
 
@@ -42,11 +42,14 @@ export default function App() {
     setPass('');
   };
 
+  // --- ส่วนการแสดงผล (UI) ---
   if (!isLoggedIn) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'sans-serif' }}>
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&display=swap');`}</style>
+        
         <h1 style={{ fontFamily: 'Noto Serif JP', fontSize: '30px', margin: '20px 0' }}>HAUS IZAKAYA</h1>
+        
         <div style={{ maxWidth: '300px', margin: '0 auto' }}>
           <input 
             placeholder="USER" 
@@ -68,6 +71,7 @@ export default function App() {
             LOGIN
           </button>
         </div>
+        
         <footer style={{ marginTop: '100px', color: '#bbb', letterSpacing: '4px', fontSize: '14px' }}>KUNAKORN</footer>
       </div>
     );
@@ -76,13 +80,12 @@ export default function App() {
   return (
     <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'sans-serif' }}>
       <h2 style={{ color: 'green' }}>LOGIN สำเร็จ</h2>
-      <p>ยินดีต้อนรับคุณ: <strong>{loggedInUser}</strong></p>
-      <div style={{ marginTop: '20px', fontSize: '12px', color: '#999' }}>ID: {DEPLOYMENT_ID}</div>
+      <p style={{ fontSize: '18px' }}>ยินดีต้อนรับคุณ: <strong>{loggedInUser}</strong></p>
       <button 
         onClick={handleLogout} 
         style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '5px' }}
       >
-        LOGOUT
+        LOGOUT (ออกจากระบบ)
       </button>
     </div>
   );
