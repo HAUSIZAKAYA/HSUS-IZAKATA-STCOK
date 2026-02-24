@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Minus, Loader2, Save, Package, Search, AlertCircle } from 'lucide-react';
+import { Plus, Minus, Loader2, Save, Package, Search, RefreshCw } from 'lucide-react';
 
 // URL ของคุณที่ส่งมาให้
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyssXPamv24PHsb-0l82fgMo5jvujkvyhXFucifYP1H9qaOWFMjE7iZ2OesPFjFJOKZ5g/exec";
@@ -10,20 +10,17 @@ function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('All');
-  const [error, setError] = useState(null);
 
-  // --- 1. การดึงข้อมูล (Fetch Data) ---
+  // 1. ดึงข้อมูลเริ่มต้น (Initial Fetch)
   const fetchItems = async () => {
     try {
       setLoading(true);
       const response = await fetch(SCRIPT_URL);
-      if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setItems(data);
-      setError(null);
-    } catch (err) {
-      setError("ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
-      console.error("Fetch Error:", err);
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      alert("ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่อ");
     } finally {
       setLoading(false);
     }
@@ -33,11 +30,11 @@ function App() {
     fetchItems();
   }, []);
 
-  // --- 2. การอัปเดตจำนวนและ Auto-save ---
+  // 2. ฟังก์ชันอัปเดตจำนวนและ Auto-save
   const updateQty = async (id, type, delta) => {
-    if (isSaving) return; // ป้องกันการกดซ้ำขณะบันทึก
+    if (isSaving) return; // ป้องกันการกดรัวขณะบันทึก
 
-    // อัปเดต State ในเครื่องทันที (Optimistic Update) เพื่อความลื่นไหล
+    // อัปเดต UI ทันที (Optimistic UI)
     const updatedItems = items.map(item => {
       if (item.id === id) {
         const newBoxQty = type === 'box' ? Math.max(0, item.boxQty + delta) : item.boxQty;
@@ -48,71 +45,71 @@ function App() {
     });
     setItems(updatedItems);
 
-    // เตรียมข้อมูลส่งไปที่ Google Sheets
+    // ส่งข้อมูลไปบันทึกที่ Google Sheets
     const targetItem = updatedItems.find(i => i.id === id);
-    await saveToGoogleSheets(targetItem);
+    syncToBackend(targetItem);
   };
 
-  const saveToGoogleSheets = async (itemData) => {
+  const syncToBackend = async (item) => {
     setIsSaving(true);
     try {
-      // ส่งข้อมูลด้วย POST method
       await fetch(SCRIPT_URL, {
         method: 'POST',
-        mode: 'no-cors', // ข้อจำกัดของ Google Apps Script
+        mode: 'no-cors', // สำคัญสำหรับ Google Apps Script Web App
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(itemData)
+        body: JSON.stringify(item)
       });
-      // เนื่องจาก no-cors จะไม่คืนค่า Response ที่เราอ่านได้ 
-      // แต่ข้อมูลจะถูกส่งถึง Google Sheets เรียบร้อย
-    } catch (err) {
-      console.error("Sync Error:", err);
+    } catch (error) {
+      console.error("Sync Error:", error);
     } finally {
-      // หน่วงเวลาเล็กน้อยเพื่อให้ User เห็นสถานะการ Sync
+      // หน่วงเวลาเล็กน้อยให้ User เห็นสถานะการเซฟ
       setTimeout(() => setIsSaving(false), 800);
     }
   };
 
-  // --- 3. การกรองและค้นหาข้อมูล ---
+  // 3. Logic การกรองข้อมูล
   const categories = ['All', ...new Set(items.map(i => i.category))];
   const filteredItems = items.filter(item => {
-    const matchesCategory = category === 'All' || item.category === category;
+    const matchesCat = category === 'All' || item.category === category;
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCat && matchesSearch;
   });
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="animate-spin text-orange-500" size={40} />
-          <p className="text-gray-500 font-medium">กำลังเตรียมสต็อก HAUS IZAKAYA...</p>
-        </div>
+      <div className="h-screen flex flex-col items-center justify-center bg-zinc-50">
+        <Loader2 className="animate-spin text-orange-500 mb-4" size={48} />
+        <p className="text-zinc-500 font-bold tracking-widest uppercase">Haus Stock Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-10 shadow-2xl overflow-hidden">
-      {/* Header & Search */}
+    <div className="max-w-md mx-auto bg-white min-h-screen pb-10 shadow-2xl overflow-hidden">
+      {/* Header */}
       <header className="bg-zinc-900 text-white p-6 sticky top-0 z-20">
-        <div className="flex justify-between items-center mb-5">
-          <div>
-            <h1 className="text-xl font-black italic tracking-tighter text-orange-500">HAUS IZAKAYA</h1>
-            <p className="text-[10px] text-zinc-400 uppercase tracking-[0.2em]">Stock Management System</p>
-          </div>
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${isSaving ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-            {isSaving ? 'SYNCING...' : 'CLOUD SYNCED'}
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-black italic tracking-tighter text-orange-500">HAUS IZAKAYA</h1>
+          <div className="flex items-center gap-2">
+            {isSaving ? (
+              <span className="flex items-center gap-1 text-orange-400 text-[10px] font-bold animate-pulse">
+                <RefreshCw size={12} className="animate-spin" /> SYNCING
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
+                <Save size={12} /> CLOUD SAVED
+              </span>
+            )}
           </div>
         </div>
 
+        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-2.5 text-zinc-500" size={18} />
           <input 
             type="text"
-            placeholder="ค้นหาสินค้า..."
-            className="w-full bg-zinc-800 border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 transition-all"
+            placeholder="Search stock..."
+            className="w-full bg-zinc-800 border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -120,13 +117,13 @@ function App() {
       </header>
 
       {/* Category Tabs */}
-      <nav className="flex overflow-x-auto p-4 gap-2 bg-white border-b sticky top-[138px] z-10 scrollbar-hide">
+      <nav className="flex overflow-x-auto p-4 gap-2 bg-zinc-50 border-b sticky top-[138px] z-10 scrollbar-hide">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-              category === cat ? 'bg-orange-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400'
+            className={`px-5 py-2 rounded-full text-[11px] font-black tracking-widest transition-all ${
+              category === cat ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-zinc-400 border border-zinc-200'
             }`}
           >
             {cat.toUpperCase()}
@@ -134,73 +131,45 @@ function App() {
         ))}
       </nav>
 
-      {/* List Content */}
+      {/* Item List */}
       <main className="p-4 space-y-4">
-        {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm">
-            <AlertCircle size={18} /> {error}
-          </div>
-        )}
-
         {filteredItems.map(item => (
-          <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-4">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">{item.category}</span>
+          <div key={item.id} className="bg-white rounded-3xl p-5 border border-zinc-100 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <span className="text-[10px] font-bold text-orange-500 uppercase">{item.category}</span>
                 <h3 className="font-bold text-zinc-800 text-lg leading-tight">{item.name}</h3>
               </div>
               <div className="text-right">
-                <p className="text-[9px] text-gray-400 font-bold uppercase">Total Pieces</p>
-                <p className="text-xl font-black text-zinc-800">
+                <p className="text-[10px] text-zinc-400 font-bold">TOTAL</p>
+                <p className="text-xl font-black text-zinc-900">
                   {(item.boxQty * (item.perBox || 0)) + item.pieceQty}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* Stepper Box */}
+              {/* Box Stepper */}
               <div className="bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <Package size={14} className="text-zinc-400" />
-                  <span className="text-[11px] font-bold text-zinc-500 uppercase">ลัง (Box)</span>
-                </div>
+                <p className="text-[10px] font-bold text-zinc-400 mb-2 uppercase flex items-center gap-1">
+                  <Package size={12} /> Boxes
+                </p>
                 <div className="flex items-center justify-between">
-                  <button 
-                    onClick={() => updateQty(item.id, 'box', -1)}
-                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
-                  >
-                    <Minus size={18} />
-                  </button>
-                  <span className="font-black text-xl text-zinc-800">{item.boxQty}</span>
-                  <button 
-                    onClick={() => updateQty(item.id, 'box', 1)}
-                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
-                  >
-                    <Plus size={18} />
-                  </button>
+                  <button onClick={() => updateQty(item.id, 'box', -1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-95 transition-all"><Minus size={16} /></button>
+                  <span className="font-black text-lg">{item.boxQty}</span>
+                  <button onClick={() => updateQty(item.id, 'box', 1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-95 transition-all"><Plus size={16} /></button>
                 </div>
               </div>
 
-              {/* Stepper Piece */}
+              {/* Piece Stepper */}
               <div className="bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <div className="w-3.5 h-3.5 bg-zinc-400 rounded-sm" />
-                  <span className="text-[11px] font-bold text-zinc-500 uppercase">ชิ้น (Piece)</span>
-                </div>
+                <p className="text-[10px] font-bold text-zinc-400 mb-2 uppercase flex items-center gap-1">
+                   Pieces
+                </p>
                 <div className="flex items-center justify-between">
-                  <button 
-                    onClick={() => updateQty(item.id, 'piece', -1)}
-                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
-                  >
-                    <Minus size={18} />
-                  </button>
-                  <span className="font-black text-xl text-zinc-800">{item.pieceQty}</span>
-                  <button 
-                    onClick={() => updateQty(item.id, 'piece', 1)}
-                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-90 transition-all"
-                  >
-                    <Plus size={18} />
-                  </button>
+                  <button onClick={() => updateQty(item.id, 'piece', -1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-95 transition-all"><Minus size={16} /></button>
+                  <span className="font-black text-lg">{item.pieceQty}</span>
+                  <button onClick={() => updateQty(item.id, 'piece', 1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:text-orange-500 active:scale-95 transition-all"><Plus size={16} /></button>
                 </div>
               </div>
             </div>
@@ -212,4 +181,3 @@ function App() {
 }
 
 export default App;
-
