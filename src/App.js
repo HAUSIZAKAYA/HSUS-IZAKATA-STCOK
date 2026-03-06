@@ -5,25 +5,24 @@ export default function App() {
   const [user, setUser] = useState("");
   const [isLogin, setIsLogin] = useState(false);
 
-  // ข้อมูลบัญชี 4 คอลัมน์ (ตามกฎราชินีสรุปยอด)
-  const [logs] = useState([
-    { recorder: "ADMIN_HAUS", item: "Sample Item", status: "Checked", date: "06/03" }
+  // ข้อมูลบัญชีสรุปยอด (คนลง, รายการ, สรุป, วันที่)
+  const [summaryData] = useState([
+    { name: "ADMIN_HAUS", item: "ตัวอย่าง: Asahi", status: "+12", date: "06/03" }
   ]);
 
   const handleLogin = (u, p) => {
-    if (!u || !p) return alert("กรุณากรอก USERNAME และ PASSWORD");
-    // ตั้งค่า User ตามที่พิมพ์จริงเท่านั้น ไม่มีการมโนชื่ออื่น
-    setUser(u.toUpperCase());
+    if (!u || !p) return alert("กรุณากรอก Username และ Password");
+    setUser(u.toUpperCase()); // ใช้ชื่อตามที่พิมพ์จริง
     setIsLogin(true);
   };
 
   if (!isLogin) return (
-    <div style={styles.loginPage}>
+    <div style={styles.loginContainer}>
       <h1 style={styles.goldText}>HAUS IZAKAYA</h1>
       <div style={styles.form}>
         <input style={styles.input} placeholder="USERNAME" onChange={e => setUser(e.target.value)} />
-        <input style={styles.input} type="password" placeholder="PASSWORD" id="pass" />
-        <button style={styles.loginBtn} onClick={() => handleLogin(user, document.getElementById('pass').value)}>ENTER SYSTEM</button>
+        <input style={styles.input} type="password" placeholder="PASSWORD" id="p" />
+        <button style={styles.loginBtn} onClick={() => handleLogin(user, document.getElementById('p').value)}>LOGIN</button>
       </div>
     </div>
   );
@@ -32,46 +31,37 @@ export default function App() {
     <div style={styles.app}>
       <header style={styles.header}>
         <div style={styles.goldText}>HAUS IZAKAYA</div>
-        <div style={styles.userInfo}>👤 USER: {user}</div>
+        <div style={styles.userBadge}>👤 {user}</div>
       </header>
 
       {view === 'MAIN' && (
-        <div style={styles.menuGrid}>
-          <button onClick={() => setView('BAR')} style={styles.menuBtn}>🍺 สต็อกบาร์</button>
-          <button onClick={() => setView('KITCHEN')} style={styles.menuBtn}>🍳 สต็อกครัว</button>
-          <button onClick={() => setView('SUMMARY')} style={styles.goldBtn}>📊 วิว สต็อกซิสเต็ม</button>
-          <button onClick={() => setIsLogin(false)} style={styles.logout}>LOGOUT</button>
+        <div style={styles.menuBox}>
+          <button onClick={() => setView('BAR')} style={styles.btn}>🍺 สต็อกบาร์</button>
+          <button onClick={() => setView('KITCHEN')} style={styles.btn}>🍳 สต็อกครัว</button>
+          <button onClick={() => setView('SUMMARY')} style={styles.btnGold}>📊 วิว สต็อกซิสเต็ม</button>
+          <button onClick={() => setIsLogin(false)} style={styles.logout}>ออกจากระบบ</button>
         </div>
       )}
 
       {view === 'SUMMARY' && (
         <div style={styles.content}>
-          <button onClick={() => setView('MAIN')} style={styles.backBtn}>← กลับหน้าหลัก</button>
-          <h2 style={styles.goldText}>บัญชีสรุปยอด</h2>
+          <button onClick={() => setView('MAIN')} style={styles.back}>← กลับ</button>
+          <h2 style={styles.goldText}>👑 ราชินีสรุปยอด</h2>
           <div style={styles.tableWrap}>
             <table style={styles.table}>
               <thead>
-                <tr>
-                  <th style={styles.th}>คนลง</th>
-                  <th style={styles.th}>รายการ</th>
-                  <th style={styles.th}>สรุป</th>
-                  <th style={styles.th}>วันที่</th>
+                <tr style={styles.th}>
+                  <th>คนลง</th><th>รายการ</th><th>สรุป</th><th>วันที่</th>
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log, i) => (
+                {summaryData.map((d, i) => (
                   <tr key={i} style={styles.tr}>
-                    <td style={styles.td}>{log.recorder}</td>
-                    <td style={styles.td}>{log.item}</td>
-                    <td style={styles.td}>{log.status}</td>
-                    <td style={styles.td}>{log.date}</td>
+                    <td>{d.name}</td><td>{d.item}</td><td>{d.status}</td><td>{d.date}</td>
                   </tr>
                 ))}
                 <tr style={styles.tr}>
-                  <td style={styles.td}>{user}</td>
-                  <td style={{...styles.td, color: '#888'}}>กำลังบันทึก...</td>
-                  <td style={styles.td}>-</td>
-                  <td style={styles.td}>06/03</td>
+                  <td>{user}</td><td style={{color:'#444'}}>...</td><td>-</td><td>06/03</td>
                 </tr>
               </tbody>
             </table>
@@ -85,21 +75,21 @@ export default function App() {
 const styles = {
   app: { backgroundColor: '#0a0a0a', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' },
   header: { display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #222', alignItems: 'center' },
-  userInfo: { fontSize: '12px', color: '#666' },
-  goldText: { color: '#E6C068', fontWeight: 'bold', letterSpacing: '1px' },
-  loginPage: { height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0a0a' },
+  goldText: { color: '#E6C068', fontWeight: 'bold', fontSize: '18px' },
+  userBadge: { fontSize: '12px', color: '#666' },
+  loginContainer: { height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0a0a' },
   form: { display: 'flex', flexDirection: 'column', gap: '10px', width: '260px' },
-  input: { padding: '12px', backgroundColor: '#111', border: '1px solid #333', color: '#fff', borderRadius: '6px', textAlign: 'center' },
-  loginBtn: { padding: '12px', backgroundColor: '#E6C068', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' },
-  menuGrid: { display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' },
-  menuBtn: { padding: '20px', backgroundColor: '#151515', color: '#E6C068', border: '1px solid #333', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold' },
-  goldBtn: { padding: '20px', backgroundColor: 'transparent', color: '#E6C068', border: '2px solid #E6C068', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold' },
-  logout: { marginTop: '20px', background: 'none', border: 'none', color: '#444', textDecoration: 'underline' },
+  input: { padding: '14px', backgroundColor: '#111', border: '1px solid #333', color: '#fff', borderRadius: '8px', textAlign: 'center' },
+  loginBtn: { padding: '14px', backgroundColor: '#E6C068', border: 'none', borderRadius: '8px', fontWeight: 'bold' },
+  menuBox: { display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' },
+  btn: { padding: '20px', backgroundColor: '#151515', color: '#E6C068', border: '1px solid #333', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold' },
+  btnGold: { padding: '20px', backgroundColor: 'transparent', color: '#E6C068', border: '2px solid #E6C068', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold' },
+  logout: { marginTop: '20px', color: '#444', background: 'none', border: 'none', textDecoration: 'underline' },
   content: { padding: '15px' },
-  backBtn: { background: 'none', border: 'none', color: '#666', marginBottom: '10px' },
+  back: { color: '#666', background: 'none', border: 'none', marginBottom: '10px' },
   tableWrap: { border: '1px solid #222', borderRadius: '8px', overflow: 'hidden' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
-  th: { backgroundColor: '#111', padding: '10px', color: '#666', textAlign: 'left', fontWeight: 'normal' },
-  td: { padding: '12px 10px', borderBottom: '1px solid #111' },
-  tr: { backgroundColor: '#0d0d0d' }
+  th: { backgroundColor: '#111', color: '#666', textAlign: 'left' },
+  tr: { borderBottom: '1px solid #111' },
+  td: { padding: '12px 8px' }
 };
